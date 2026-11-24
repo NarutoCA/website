@@ -1,2 +1,481 @@
-teste
-<h1>header here</h1>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>NarutoCA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: navy hero band with a spiral, then three scroll-style sections (About Me, Things that I Like, General) on a sticky nav. */
+:root {
+  --bg: #F2F4FA;
+  --surface: #FFFFFF;
+  --ink: #0E1A33;
+  --muted: #4F5D7A;
+  --line: #D3DAE9;
+  --accent: #E8590C;
+  --accent-ink: #B33F06;
+  --on-accent: #0E1A33;
+  --blue: #1E5BD8;
+  --hero-a: #0B1430;
+  --hero-b: #16285A;
+  --hero-fg: #F4F6FC;
+  --hero-muted: #B3BFDC;
+  --font-display: "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1226;
+    --surface: #111C3A;
+    --ink: #EDF1FB;
+    --muted: #9CAACB;
+    --line: #243459;
+    --accent: #FF7A1A;
+    --accent-ink: #FFA05A;
+    --blue: #7AA5FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1226;
+  --surface: #111C3A;
+  --ink: #EDF1FB;
+  --muted: #9CAACB;
+  --line: #243459;
+  --accent: #FF7A1A;
+  --accent-ink: #FFA05A;
+  --blue: #7AA5FF;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
+  z-index: 30;
+}
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--accent-ink); }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+.wrap {
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Header */
+.site-header {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--bg);
+  border-bottom: 2px solid var(--accent);
+}
+.site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 1.6rem; letter-spacing: 0.06em; color: var(--ink); text-decoration: none; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.nav { display: flex; gap: 4px; overflow-x: auto; }
+.nav a {
+  font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink); text-decoration: none; padding: 8px 12px; border-radius: 4px; white-space: nowrap;
+}
+.nav a:hover { background: var(--accent); color: var(--on-accent); }
+@media (max-width: 560px) { .brand span { display: none; } .nav { margin-left: auto; } }
+
+/* Hero */
+.hero { background: linear-gradient(135deg, var(--hero-a), var(--hero-b)); color: var(--hero-fg); }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 32px; align-items: center; padding-block: 56px; }
+.kicker { font-weight: 700; font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.hero .kicker { color: #FF8A33; }
+.hero h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(3.4rem, 10vw, 6.4rem); line-height: 0.95; letter-spacing: 0.02em; margin-block: 10px 14px; }
+.hero p.lede { max-width: 34ch; font-size: 1.15rem; color: var(--hero-muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.chip { font-size: 0.85rem; font-weight: 700; padding: 5px 12px; border: 1.5px solid #FF8A33; border-radius: 999px; color: var(--hero-fg); }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.btn {
+  display: inline-block; font-family: inherit; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 12px 20px; border-radius: 4px; text-decoration: none; cursor: pointer; border: 2px solid var(--accent);
+}
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--hero-fg); border-color: var(--hero-muted); }
+.btn.ghost:hover { border-color: #FF8A33; color: #FF8A33; }
+.hero-art { display: flex; justify-content: center; }
+.hero-art svg { width: min(100%, 340px); height: auto; display: block; }
+@media (max-width: 760px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); padding-block: 40px; } .hero-art { order: -1; } .hero-art svg { width: 190px; } }
+
+/* Sections */
+section { scroll-margin-top: 72px; }
+.section { padding-block: 64px; }
+.section + .section { border-top: 1px solid var(--line); }
+.section-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 28px; }
+.section-head h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: 0.04em; line-height: 1; }
+.section-head .rule { display: flex; align-items: center; gap: 10px; color: var(--accent); margin-top: 6px; }
+.section-head .rule svg { width: 18px; height: 18px; flex: none; }
+.section-head .rule i { display: block; height: 3px; width: 72px; background: var(--accent); }
+
+/* About */
+.about-grid { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); gap: 28px; align-items: start; }
+@media (max-width: 760px) { .about-grid { grid-template-columns: minmax(0, 1fr); } }
+.profile { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 24px; text-align: center; }
+.avatar {
+  width: 112px; height: 112px; border-radius: 50%; margin: 0 auto 14px;
+  display: grid; place-items: center; font-family: var(--font-display); font-size: 3.2rem; color: var(--on-accent);
+  background: radial-gradient(circle at 30% 25%, #FFB36B, var(--accent)); border: 4px solid var(--ink);
+}
+.profile h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.9rem; letter-spacing: 0.05em; }
+.profile .rank { display: inline-block; margin-top: 6px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; background: var(--ink); color: var(--bg); padding: 3px 10px; border-radius: 3px; }
+.bio { display: flex; flex-direction: column; gap: 14px; max-width: 62ch; }
+.bio p:first-child { font-size: 1.2rem; font-weight: 600; }
+.info { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 20px; margin: 10px 0 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.info dt { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.info dd { margin: 0; font-weight: 600; }
+
+/* Likes */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.filters button {
+  font-family: inherit; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase;
+  background: transparent; color: var(--ink); border: 2px solid var(--line); border-radius: 999px; padding: 6px 16px; cursor: pointer;
+}
+.filters button:hover { border-color: var(--accent); }
+.filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-ink); }
+.grade { font-family: var(--font-display); font-size: 1.5rem; line-height: 1; color: var(--on-accent); background: var(--accent); padding: 2px 8px 0; border-radius: 3px; }
+.card h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; letter-spacing: 0.04em; line-height: 1.1; }
+.card p { color: var(--muted); font-size: 0.97rem; }
+
+/* Projects */
+.projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.project { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.project-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.project h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; letter-spacing: 0.04em; line-height: 1.1; }
+.project p { color: var(--muted); font-size: 0.97rem; }
+.status { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 10px; border: 1.5px solid currentColor; border-radius: 999px; white-space: nowrap; }
+.status.done { color: var(--blue); }
+.status.active { color: var(--accent-ink); }
+.status.planned { color: var(--muted); }
+.progress { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { flex: 1; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.stack { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.stack span { font-size: 0.75rem; font-weight: 700; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; }
+
+/* General */
+.gen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.panel h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; letter-spacing: 0.05em; }
+.contact-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.contact-line code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92rem; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; overflow-wrap: anywhere; user-select: all; }
+.btn.small { padding: 7px 12px; font-size: 0.78rem; background: transparent; color: var(--ink); border-color: var(--ink); }
+.btn.small:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.log li { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 14px; }
+.log time { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); padding-top: 3px; white-space: nowrap; }
+details { border-top: 1px solid var(--line); padding-block: 10px; }
+details:first-of-type { border-top: 0; padding-top: 0; }
+summary { cursor: pointer; font-weight: 700; }
+details p { margin-top: 6px; color: var(--muted); font-size: 0.97rem; }
+.note { font-size: 0.85rem; color: var(--muted); }
+
+footer { background: var(--hero-a); color: var(--hero-muted); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding-block: 24px; font-size: 0.88rem; }
+footer a { color: #FF9A4D; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star" viewBox="0 0 24 24"><polygon points="12,0 15,9 24,12 15,15 12,24 9,15 0,12 9,9" fill="currentColor"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="NarutoCA, back to top">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="var(--accent)"/><path id="logoSpiral" fill="none" stroke="var(--on-accent)" stroke-width="3" stroke-linecap="round"/></svg>
+      <span>NarutoCA</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#about">About Me</a>
+      <a href="#likes">Things I Like</a>
+      <a href="#projects">My Projects</a>
+      <a href="#general">General</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">Personal site &middot; Est. 2026</p>
+        <h1>PedroTP.</h1>
+        <p class="lede">Aspiring ninja of everyday life. Powered by ramen, anime, and one more training session.</p>
+        <div class="chips">
+          <span class="chip">Rank: Genin</span>
+          <span class="chip">Element: Wind</span>
+          <span class="chip">Fuel: Ramen</span>
+        </div>
+        <div class="cta-row">
+          <a class="btn primary" href="#about">Read my story</a>
+          <a class="btn ghost" href="#likes">See what I like</a>
+        </div>
+      </div>
+      <div class="hero-art">
+        <svg viewBox="0 0 400 400" role="img" aria-label="Orange spiral swirl">
+          <circle cx="200" cy="200" r="190" fill="none" stroke="#FF8A33" stroke-width="3" stroke-dasharray="4 12"/>
+          <circle cx="200" cy="200" r="150" fill="#FF7A1A" opacity="0.14"/>
+          <path id="heroSpiral" fill="none" stroke="#FF7A1A" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <section id="about" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">Mission briefing</p>
+        <h2>About Me</h2>
+        <div class="rule"><svg><use href="#star"/></svg><i></i></div>
+      </div>
+      <div class="about-grid">
+        <aside class="profile">
+          <div class="avatar" aria-hidden="true">Y</div>
+          <h3>PedroTP.</h3>
+          <span class="rank">Genin &middot; Still learning</span>
+        </aside>
+        <div class="bio">
+          <p>Hi, I'm the person behind this site. Swap this paragraph for your own intro.</p>
+          <p>I like to set a goal that looks a little too big, then chip away at it every day. Some days that means long hours on a project. Other days it means a short walk and a good bowl of noodles. Both count as training.</p>
+          <p>This site is my small corner of the village: what I'm into, what I'm working on, and how to reach me.</p>
+          <dl class="info">
+            <dt>Hometown</dt><dd>Your city, your village</dd>
+            <dt>Team</dt><dd>Friends, family, and one very patient pet</dd>
+            <dt>Specialty</dt><dd>Staying with a plan, then adding ramen</dd>
+            <dt>Current mission</dt><dd>Building this site, one section at a time</dd>
+            <dt>Dream</dt><dd>Become someone my younger self would cheer for</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="likes" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">Jutsu scroll</p>
+        <h2>Things that I Like</h2>
+        <div class="rule"><svg><use href="#star"/></svg><i></i></div>
+      </div>
+      <div class="filters" role="group" aria-label="Filter favorites">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="anime" aria-pressed="false">Anime</button>
+        <button type="button" data-filter="food" aria-pressed="false">Food</button>
+        <button type="button" data-filter="training" aria-pressed="false">Training</button>
+        <button type="button" data-filter="games" aria-pressed="false">Games</button>
+      </div>
+      <div class="cards" id="cards">
+        <article class="card" data-cat="anime">
+          <div class="card-top"><span class="tag">Anime</span><span class="grade" title="Grade">S</span></div>
+          <h3>Long story arcs</h3>
+          <p>Series about friendship, rivalry, and never giving up. I will always stay for one more episode.</p>
+        </article>
+        <article class="card" data-cat="anime">
+          <div class="card-top"><span class="tag">Anime</span><span class="grade" title="Grade">A</span></div>
+          <h3>Opening themes</h3>
+          <p>A good opening gets me moving. I have a playlist for focus and a playlist for pep talks.</p>
+        </article>
+        <article class="card" data-cat="food">
+          <div class="card-top"><span class="tag">Food</span><span class="grade" title="Grade">S</span></div>
+          <h3>Ramen nights</h3>
+          <p>Miso broth, extra egg, and a quiet table. The most reliable way to recharge.</p>
+        </article>
+        <article class="card" data-cat="food">
+          <div class="card-top"><span class="tag">Food</span><span class="grade" title="Grade">B</span></div>
+          <h3>Dango and tea</h3>
+          <p>Sweet rice dumplings on a skewer with hot green tea. A small ceremony for a slow afternoon.</p>
+        </article>
+        <article class="card" data-cat="training">
+          <div class="card-top"><span class="tag">Training</span><span class="grade" title="Grade">A</span></div>
+          <h3>Morning runs</h3>
+          <p>Short, steady, and before the day gets loud. Wind in my face counts as chakra control.</p>
+        </article>
+        <article class="card" data-cat="training">
+          <div class="card-top"><span class="tag">Training</span><span class="grade" title="Grade">B</span></div>
+          <h3>Practice sessions</h3>
+          <p>Doing the same skill again until it feels easy. Repetition is the quiet superpower.</p>
+        </article>
+        <article class="card" data-cat="games">
+          <div class="card-top"><span class="tag">Games</span><span class="grade" title="Grade">A</span></div>
+          <h3>Co-op adventures</h3>
+          <p>Team-based games where everyone has a role. I like being the one who covers the gaps.</p>
+        </article>
+        <article class="card" data-cat="games">
+          <div class="card-top"><span class="tag">Games</span><span class="grade" title="Grade">B</span></div>
+          <h3>Board game evenings</h3>
+          <p>Snacks, strategy, and friendly betrayal. Rematches are always on the table.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">Mission board</p>
+        <h2>My Projects</h2>
+        <div class="rule"><svg><use href="#star"/></svg><i></i></div>
+      </div>
+      <div class="projects">
+        <article class="project">
+          <div class="project-top"><span class="status done">Complete</span></div>
+          <h3>NarutoCA</h3>
+          <p>This personal site. Four sections, a light and dark theme, and a lot of orange.</p>
+          <div class="progress"><div class="bar"><i style="width:100%"></i></div><span>100%</span></div>
+          <div class="stack"><span>HTML</span><span>CSS</span><span>JavaScript</span></div>
+        </article>
+        <article class="project">
+          <div class="project-top"><span class="status active">In progress</span></div>
+          <h3>Training Log</h3>
+          <p>A simple tracker for daily practice: what I worked on, how long, and how it felt.</p>
+          <div class="progress"><div class="bar"><i style="width:60%"></i></div><span>60%</span></div>
+          <div class="stack"><span>Planning</span><span>Design</span></div>
+        </article>
+        <article class="project">
+          <div class="project-top"><span class="status active">In progress</span></div>
+          <h3>Ramen Tier List</h3>
+          <p>Ranking every bowl I try, with notes on broth, noodles, and toppings.</p>
+          <div class="progress"><div class="bar"><i style="width:35%"></i></div><span>35%</span></div>
+          <div class="stack"><span>Writing</span><span>Photos</span></div>
+        </article>
+        <article class="project">
+          <div class="project-top"><span class="status planned">Planned</span></div>
+          <h3>Sketchbook Series</h3>
+          <p>A weekly drawing challenge, shared on this site once I have ten pages to show.</p>
+          <div class="progress"><div class="bar"><i style="width:0%"></i></div><span>0%</span></div>
+          <div class="stack"><span>Drawing</span><span>Gallery</span></div>
+        </article>
+      </div>
+      <p class="note" style="margin-top:16px">Example projects. Replace them with your own work and update the progress bars.</p>
+    </div>
+  </section>
+
+  <section id="general" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">Village notice board</p>
+        <h2>General</h2>
+        <div class="rule"><svg><use href="#star"/></svg><i></i></div>
+      </div>
+      <div class="gen-grid">
+        <div class="panel">
+          <h3>Send a message</h3>
+          <p>Want to say hi, share a recommendation, or team up on something? Reach me here.</p>
+          <div class="contact-line">
+            <code id="email">hello@example.com</code>
+            <button class="btn small" type="button" id="copyEmail">Copy email</button>
+          </div>
+          <p class="note" id="copyNote" aria-live="polite">Example address. Replace it with your own.</p>
+        </div>
+        <div class="panel">
+          <h3>Site log</h3>
+          <ul class="log">
+            <li><time>Nov 24, 2026</time><span>Added the My Projects section.</span></li>
+            <li><time>Nov 24, 2026</time><span>Site opened with About Me, Things that I Like, and General.</span></li>
+            <li><time>Coming up</time><span>A photo gallery and project write-ups.</span></li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Quick answers</h3>
+          <div>
+            <details>
+              <summary>Why the ninja theme?</summary>
+              <p>It reminds me to treat every small task as training. The orange and navy colors are just a bonus.</p>
+            </details>
+            <details>
+              <summary>How often is this updated?</summary>
+              <p>Whenever I learn something new or find a new favorite bowl of ramen.</p>
+            </details>
+            <details>
+              <summary>Can I suggest something to try?</summary>
+              <p>Yes. Send it through the email above, and add a reason so I can rank it.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 PedroTP. A fan-made, personal site.</span>
+    <a href="#top">Back to top</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // Draw a spiral as a single path.
+  function spiral(cx, cy, r0, r1, turns, steps) {
+    var d = "";
+    for (var i = 0; i <= steps; i++) {
+      var t = i / steps;
+      var a = t * turns * 2 * Math.PI;
+      var r = r0 + t * (r1 - r0);
+      d += (i ? "L" : "M") + (cx + r * Math.cos(a)).toFixed(1) + " " + (cy + r * Math.sin(a)).toFixed(1) + " ";
+    }
+    return d;
+  }
+  var hero = document.getElementById("heroSpiral");
+  if (hero) hero.setAttribute("d", spiral(200, 200, 6, 160, 3.5, 320));
+  var logo = document.getElementById("logoSpiral");
+  if (logo) logo.setAttribute("d", spiral(20, 20, 1, 13, 2.5, 120));
+
+  // Filter the favorites.
+  var buttons = document.querySelectorAll(".filters button");
+  var cards = document.querySelectorAll("#cards .card");
+  buttons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var f = btn.getAttribute("data-filter");
+      buttons.forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+      cards.forEach(function (c) { c.hidden = !(f === "all" || c.getAttribute("data-cat") === f); });
+    });
+  });
+
+  // Copy the email address, with a fallback to selecting it.
+  var copyBtn = document.getElementById("copyEmail");
+  var emailEl = document.getElementById("email");
+  var note = document.getElementById("copyNote");
+  function selectEmail() {
+    var range = document.createRange();
+    range.selectNodeContents(emailEl);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  copyBtn.addEventListener("click", function () {
+    var text = emailEl.textContent;
+    var done = function () { note.textContent = "Copied to your clipboard."; };
+    var fail = function () { selectEmail(); note.textContent = "Selected. Press Ctrl+C or Cmd+C to copy."; };
+    try {
+      navigator.clipboard.writeText(text).then(done, fail);
+    } catch (e) { fail(); }
+  });
+})();
+</script>
+
+</body></html>
