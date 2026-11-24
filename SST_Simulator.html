@@ -1,0 +1,2753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SST — Security System Simulator</title>
+<style>
+:root{
+  --bg:#0b0d13;
+  --panel:#141824;
+  --panel2:#1b2030;
+  --line:#2a3145;
+  --txt:#e7ecf7;
+  --dim:#8a94ad;
+  --accent:#49d6a0;
+  --warn:#f5b73d;
+  --bad:#ff5c5c;
+  --sky:#7dd3fc;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font:13px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---------- header ---------- */
+header{
+  display:flex;align-items:center;gap:14px;padding:9px 14px;
+  background:linear-gradient(#171c2a,#11151f);
+  border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.14em;font-size:13px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.brand small{font-weight:500;letter-spacing:.02em;color:var(--dim);font-size:11px}
+
+#status{
+  padding:5px 14px;border-radius:999px;font-weight:700;letter-spacing:.11em;font-size:11.5px;
+  border:1px solid var(--line);background:#101522;min-width:186px;text-align:center;
+}
+#status.disarmed{color:var(--accent);border-color:#1d6a50}
+#status.armed{color:var(--sky);border-color:#235a78;background:#0e1c28}
+#status.exit{color:var(--warn);border-color:#6b5320;background:#231c0c}
+#status.entry{color:var(--warn);border-color:#6b5320;background:#231c0c;animation:blink .55s steps(2,end) infinite}
+#status.alarm{color:#fff;background:#8d1422;border-color:#ff6b6b;animation:blink .38s steps(2,end) infinite}
+@keyframes blink{50%{opacity:.35}}
+
+.grp{display:flex;align-items:center;gap:6px;padding-left:12px;border-left:1px solid var(--line)}
+.grp:first-of-type{border-left:0;padding-left:0}
+.grp label{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.btn{
+  background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:6px 11px;font-size:12px;font-weight:600;transition:.12s;
+}
+.btn:hover{background:#28304a;border-color:#3c466a}
+.btn.on{background:#13342a;border-color:#2f7d60;color:var(--accent)}
+.btn.pri{background:#143040;border-color:#2b6f93;color:var(--sky)}
+.btn.pri:hover{background:#1b4258}
+.btn.danger{background:#35161b;border-color:#8a3340;color:#ff9b9b}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12px}
+#scenario{max-width:232px}
+.spacer{flex:1}
+
+/* ---------- layout ---------- */
+main{flex:1;display:grid;grid-template-columns:216px 1fr 288px;min-height:0}
+aside{background:var(--panel);overflow-y:auto;display:flex;flex-direction:column}
+aside.left{border-right:1px solid var(--line)}
+aside.right{border-left:1px solid var(--line)}
+.sec{border-bottom:1px solid var(--line);padding:10px 11px}
+.sec h3{
+  margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  display:flex;justify-content:space-between;align-items:center;font-weight:700;
+}
+
+/* ---------- palette ---------- */
+.pal{display:flex;flex-direction:column;gap:5px}
+.pitem{
+  display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;
+  background:var(--panel2);border:1px solid var(--line);cursor:grab;
+  touch-action:none;user-select:none;transition:.12s;
+}
+.pitem:hover{background:#242c42;border-color:#3d4868;transform:translateX(2px)}
+.pitem .ic{width:26px;height:26px;flex:0 0 26px;display:grid;place-items:center;border-radius:6px;background:#0e1220}
+.pitem .nm{font-weight:600;font-size:12px;line-height:1.2}
+.pitem .pr{font-size:10.5px;color:var(--dim)}
+.pitem.maxed{opacity:.38;pointer-events:none}
+.pitem.act{background:#14304a;border-color:#3f7fa8;cursor:pointer}
+.pitem.act .nm{color:var(--sky)}
+
+/* blueprint mode */
+body.editing #cv{border-color:#39527a}
+body.editing .stage{background:radial-gradient(900px 600px at 50% 40%,#101a2b,#080b11)}
+body.editing #status,body.editing .grp.sysctl{opacity:.35;pointer-events:none}
+body.editing .sec.settings,body.editing .sec.devhint{display:none}
+
+#ghost{
+  position:fixed;z-index:99;pointer-events:none;display:none;
+  padding:5px 9px;border-radius:8px;background:#1d2437ee;border:1px solid #47527a;
+  font-size:11.5px;font-weight:600;transform:translate(-50%,-50%);box-shadow:0 8px 24px #000a;
+}
+
+/* ---------- stage ---------- */
+.stage{position:relative;display:grid;place-items:center;background:
+  radial-gradient(900px 600px at 50% 40%,#131828,#0a0c12);min-height:0;padding:12px;
+  container-type:size}
+#cv{width:min(100%, calc(100cqh * 1000 / 700));max-width:100%;height:auto;
+  border-radius:12px;background:#0e1220;
+  border:1px solid #252c42;box-shadow:0 14px 50px #000a;touch-action:none}
+.hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  color:var(--dim);font-size:11px;background:#0c0f18cc;padding:4px 12px;border-radius:999px;
+  border:1px solid var(--line);pointer-events:none}
+
+/* ---------- inspector ---------- */
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0}
+.row span.k{color:var(--dim);font-size:11.5px}
+.row input[type=range]{width:120px;accent-color:var(--sky)}
+.row input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px}
+.row select{padding:4px 6px;font-size:11.5px;max-width:148px}
+.empty{color:var(--dim);font-size:11.5px;font-style:italic;padding:6px 0}
+.devhead{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.devhead .ic{width:30px;height:30px;border-radius:7px;background:#0e1220;display:grid;place-items:center}
+.devhead b{font-size:13px}
+.devhead div small{color:var(--dim)}
+
+/* ---------- zones ---------- */
+.zone{display:flex;align-items:center;gap:8px;padding:4px 5px;border-radius:6px;font-size:11.5px;cursor:pointer}
+.zone:hover{background:#1e2435}
+.zone.sel{background:#1d2a3b;outline:1px solid #335}
+.led{width:9px;height:9px;border-radius:50%;background:#2a7a5c;flex:0 0 9px;box-shadow:0 0 6px #2a7a5c88}
+.led.trip{background:var(--bad);box-shadow:0 0 9px var(--bad)}
+.led.byp{background:var(--warn);box-shadow:0 0 7px var(--warn)}
+.zone .zn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zone .zt{color:var(--dim);font-size:9.5px;letter-spacing:.06em}
+
+/* ---------- log ---------- */
+#log{flex:1;overflow-y:auto;padding:8px 11px;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:120px}
+#log div{padding:1px 0;border-bottom:1px solid #1b2030;display:flex;gap:7px}
+#log .t{color:#5d6680;flex:0 0 42px}
+#log .info{color:#b9c3d8}
+#log .ok{color:var(--accent)}
+#log .warn{color:var(--warn)}
+#log .alarm{color:#ff7b7b;font-weight:700}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;background:#05070cdd;display:none;place-items:center;z-index:120;padding:20px}
+.modal.show{display:grid}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:22px 24px;max-width:580px;width:100%;box-shadow:0 20px 70px #000}
+.card h2{margin:0 0 4px;font-size:19px}
+.card .sub{color:var(--dim);margin-bottom:16px;font-size:12px}
+.grade{font-size:52px;font-weight:800;line-height:1;float:right;margin:-6px 0 0 16px}
+.mlist{margin:0;padding:0;list-style:none}
+.mlist li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #1d2334}
+.mlist li span:last-child{font-weight:700}
+.notes{margin:14px 0 0;padding:0 0 0 17px;color:#c6cee0;font-size:12px}
+.notes li{margin:3px 0}
+.card .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+kbd{background:#222a3e;border:1px solid #39425f;border-bottom-width:2px;border-radius:4px;
+  padding:1px 5px;font:11px ui-monospace,monospace}
+.helpgrid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;align-items:center}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2a3145;border-radius:9px}
+::-webkit-scrollbar-track{background:transparent}
+@media(max-width:1180px){main{grid-template-columns:186px 1fr 250px}}
+@media(max-width:1680px){.brand small{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span>SST<small>security system simulator</small></div>
+  <div id="status" class="disarmed">DISARMED</div>
+
+  <div class="grp sysctl">
+    <button class="btn" id="bDisarm">Disarm</button>
+    <button class="btn pri" id="bHome">Arm Home</button>
+    <button class="btn pri" id="bAway">Arm Away</button>
+  </div>
+
+  <div class="grp sysctl">
+    <label>Scenario</label>
+    <select id="scenario"></select>
+    <button class="btn pri" id="bRun">▶ Run</button>
+    <button class="btn" id="bPause" disabled>❚❚</button>
+    <select id="speed">
+      <option value="1">1×</option><option value="2">2×</option><option value="4">4×</option>
+    </select>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="grp">
+    <button class="btn" id="bCoverage">Coverage</button>
+    <button class="btn on" id="bCones">Cones</button>
+    <button class="btn" id="bMute">🔊</button>
+    <button class="btn" id="bEdit">Blueprint</button>
+    <button class="btn" id="bPreset">Preset</button>
+    <button class="btn danger" id="bClear">Clear</button>
+    <button class="btn" id="bHelp">?</button>
+  </div>
+</header>
+
+<main>
+  <aside class="left">
+    <div class="sec">
+      <h3><span id="palTitle">Devices</span> <span id="cost">$0</span></h3>
+      <div class="pal" id="pal"></div>
+    </div>
+    <div class="sec settings">
+      <h3>Settings</h3>
+      <div class="row"><span class="k">Entry delay</span><input type="range" id="sEntry" min="0" max="60" step="5"><b id="vEntry">30s</b></div>
+      <div class="row"><span class="k">Exit delay</span><input type="range" id="sExit" min="0" max="120" step="10"><b id="vExit">60s</b></div>
+    </div>
+    <div class="sec devhint" style="border:0;color:var(--dim);font-size:11px">
+      Drag a device onto the floor plan.<br>
+      Contacts snap to doors &amp; windows.<br>
+      Drag a placed device off the plan to delete it.
+    </div>
+  </aside>
+
+  <section class="stage">
+    <canvas id="cv" width="1000" height="700"></canvas>
+    <div class="hint" id="hint">Drag devices from the left onto the floor plan</div>
+  </section>
+
+  <aside class="right">
+    <div class="sec">
+      <h3>Inspector</h3>
+      <div id="insp"><div class="empty">No device selected.</div></div>
+    </div>
+    <div class="sec">
+      <h3>Zones <span id="zcount">0</span></h3>
+      <div id="zones"><div class="empty">No sensors installed.</div></div>
+    </div>
+    <div class="sec" style="flex:1;display:flex;flex-direction:column;padding:0;border:0;min-height:0">
+      <h3 style="padding:10px 11px 0;margin-bottom:4px">Event log</h3>
+      <div id="log"></div>
+    </div>
+  </aside>
+</main>
+
+<div id="ghost"></div>
+
+<div class="modal" id="modal"><div class="card" id="modalCard"></div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   SST — drag & drop home security system simulator
+   Single file, no dependencies.
+   ============================================================ */
+
+const W = 1000, H = 700;
+const TAU = Math.PI * 2;
+const clamp = (v,a,b)=>v<a?a:v>b?b:v;
+const dist = (ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+const uid = (()=>{let n=0;return p=>p+(++n)})();
+
+/* ------------------------------------------------------------
+   1. The building
+
+   A plan is nothing but rooms (axis-aligned rectangles) and
+   openings (doors, archways, windows) sitting on their edges.
+   Walls, the room graph and the scenario list are all *derived*
+   from that, which is what lets you draw your own plan.
+   ------------------------------------------------------------ */
+
+// o:'h' => the gap runs along X (the wall is horizontal); o:'v' => along Y
+const DEFAULT_PLAN = {
+  name: 'Default house',
+  rooms: [
+    {id:'living', name:'Living Room',     x:40,  y:40,  w:420, h:340},
+    {id:'kitchen',name:'Kitchen',         x:460, y:40,  w:240, h:340},
+    {id:'garage', name:'Garage',          x:700, y:40,  w:260, h:340},
+    {id:'hall',   name:'Hallway',         x:40,  y:380, w:920, h:90 },
+    {id:'bed1',   name:'Master Bedroom',  x:40,  y:470, w:290, h:190},
+    {id:'bed2',   name:'Bedroom',         x:330, y:470, w:290, h:190},
+    {id:'bath',   name:'Bathroom',        x:620, y:470, w:170, h:190},
+    {id:'office', name:'Office',          x:790, y:470, w:170, h:190},
+  ],
+  doors: [
+    {id:'d_front', name:'Front Door',       x:40, y:425, o:'v', w:70},
+    {id:'d_back',  name:'Back Door',        x:580,y:40,  o:'h', w:80},
+    {id:'d_gardr', name:'Garage Door',      x:960,y:210, o:'v', w:150},
+    {id:'d_arch',  name:'Archway',          x:460,y:200, o:'v', w:120, arch:true},
+    {id:'d_liv',   name:'Living Rm Door',   x:250,y:380, o:'h', w:90},
+    {id:'d_kit',   name:'Kitchen Door',     x:580,y:380, o:'h', w:90},
+    {id:'d_gar',   name:'Garage Int. Door', x:830,y:380, o:'h', w:80},
+    {id:'d_bed1',  name:'Master Bdrm Door', x:185,y:470, o:'h', w:80},
+    {id:'d_bed2',  name:'Bedroom Door',     x:475,y:470, o:'h', w:80},
+    {id:'d_bath',  name:'Bathroom Door',    x:705,y:470, o:'h', w:70},
+    {id:'d_off',   name:'Office Door',      x:875,y:470, o:'h', w:70},
+  ],
+  windows: [
+    {id:'w_liv1', name:'Living Rm Window N1', x:150,y:40,  o:'h', w:90},
+    {id:'w_liv2', name:'Living Rm Window N2', x:350,y:40,  o:'h', w:90},
+    {id:'w_liv3', name:'Living Rm Window W',  x:40, y:200, o:'v', w:100},
+    {id:'w_kit',  name:'Kitchen Window',      x:680,y:40,  o:'h', w:60},
+    {id:'w_bed1a',name:'Master Window S',     x:130,y:660, o:'h', w:90},
+    {id:'w_bed1b',name:'Master Window W',     x:40, y:570, o:'v', w:90},
+    {id:'w_bed2a',name:'Bedroom Window S1',   x:420,y:660, o:'h', w:90},
+    {id:'w_bed2b',name:'Bedroom Window S2',   x:550,y:660, o:'h', w:80},
+    {id:'w_bath', name:'Bathroom Window',     x:705,y:660, o:'h', w:50},
+    {id:'w_off1', name:'Office Window E',     x:960,y:570, o:'v', w:90},
+    {id:'w_off2', name:'Office Window S',     x:875,y:660, o:'h', w:70},
+  ],
+  // curated for this house; a plan you draw yourself gets a generated list
+  scenarios: [
+    {id:'front',  name:'Intruder — front door',        entry:'d_front', target:'bed1'},
+    {id:'back',   name:'Intruder — back door',         entry:'d_back',  target:'office'},
+    {id:'garage', name:'Intruder — via garage',        entry:'d_gardr', target:'bed1'},
+    {id:'smash',  name:'Intruder — smashes a window',  entry:'w_liv3',  target:'office'},
+    {id:'bedwin', name:'Intruder — bedroom window',    entry:'w_bed2a', target:'bed1'},
+    {id:'two',    name:'Two intruders — split entry',  entry:'d_back',  target:'bed1', second:{entry:'w_off1', target:'living'}},
+    {id:'resident',name:'Resident comes home',         entry:'d_front', target:'kitchen', kind:'resident'},
+    {id:'night',  name:'Resident — office to kitchen', kind:'indoor', from:'office', to:'kitchen'},
+    {id:'pet',    name:'Pet roams (false alarm test)', kind:'pet'},
+    {id:'fire',   name:'Kitchen fire',                 kind:'fire', room:'kitchen'},
+  ],
+};
+
+let PLAN = null;
+let ROOMS = [], DOORS = [], WINDOWS = [], OPENINGS = [], WALLS = [], SOLIDS = [], ADJ = {}, SCENARIOS = [];
+
+const byId = id => OPENINGS.find(o=>o.id===id);
+const roomById = id => ROOMS.find(r=>r.id===id);
+const roomCx = r => r.x + r.w/2, roomCy = r => r.y + r.h/2;
+/** room containing a point, with a margin so points on a wall belong to neither */
+function roomAt(x,y){
+  for (const r of ROOMS)
+    if (x>=r.x+5 && x<=r.x+r.w-5 && y>=r.y+5 && y<=r.y+r.h-5) return r;
+  return null;
+}
+/** strict containment — used to work out which side of a wall is inside */
+function roomAtRaw(x,y){
+  for (const r of ROOMS)
+    if (x>r.x && x<r.x+r.w && y>r.y && y<r.y+r.h) return r;
+  return null;
+}
+
+/** Every room edge becomes wall. Shared edges are interior, the rest exterior. */
+function deriveWalls(){
+  const groups = new Map();
+  const add = (h,f,a,b)=>{
+    const k = (h?'h':'v')+':'+f;
+    if (!groups.has(k)) groups.set(k, {h, f, spans:[]});
+    groups.get(k).spans.push([a,b]);
+  };
+  for (const r of ROOMS){
+    add(true,  r.y,     r.x, r.x+r.w);
+    add(true,  r.y+r.h, r.x, r.x+r.w);
+    add(false, r.x,     r.y, r.y+r.h);
+    add(false, r.x+r.w, r.y, r.y+r.h);
+  }
+  // split every line into atomic pieces at each room corner, then classify
+  const atoms = [];
+  for (const g of groups.values()){
+    const cuts = [...new Set(g.spans.flat())].sort((p,q)=>p-q);
+    for (let i=0;i<cuts.length-1;i++){
+      const a = cuts[i], b = cuts[i+1];
+      if (b-a < 1) continue;
+      if (!g.spans.some(s=>s[0] <= a+0.01 && s[1] >= b-0.01)) continue;
+      const m = (a+b)/2;
+      const s1 = g.h ? roomAtRaw(m, g.f-4) : roomAtRaw(g.f-4, m);
+      const s2 = g.h ? roomAtRaw(m, g.f+4) : roomAtRaw(g.f+4, m);
+      if (!s1 && !s2) continue;
+      atoms.push({h:g.h, f:g.f, a, b, ext: !(s1 && s2)});
+    }
+  }
+  // glue touching pieces back together so an opening can never straddle two
+  const merged = new Map();
+  for (const t of atoms){
+    const k = (t.h?'h':'v')+':'+t.f+':'+(t.ext?1:0);
+    if (!merged.has(k)) merged.set(k, []);
+    merged.get(k).push(t);
+  }
+  const out = [];
+  for (const list of merged.values()){
+    list.sort((p,q)=>p.a-q.a);
+    let cur = null;
+    for (const t of list){
+      if (cur && t.a <= cur.b + 0.01) cur.b = Math.max(cur.b, t.b);
+      else { if (cur) out.push(cur); cur = {...t}; }
+    }
+    if (cur) out.push(cur);
+  }
+  return out.map(t => t.h
+    ? {x1:t.a, y1:t.f, x2:t.b, y2:t.f, ext:t.ext, h:true,  f:t.f, a:t.a, b:t.b}
+    : {x1:t.f, y1:t.a, x2:t.f, y2:t.b, ext:t.ext, h:false, f:t.f, a:t.a, b:t.b});
+}
+
+/** Which rooms does this opening join, and does it face the outside? */
+function openingTopology(o){
+  const s1 = o.o==='h' ? roomAtRaw(o.x, o.y-5) : roomAtRaw(o.x-5, o.y);
+  const s2 = o.o==='h' ? roomAtRaw(o.x, o.y+5) : roomAtRaw(o.x+5, o.y);
+  const inside = s1 || s2;
+  o.ext = !(s1 && s2);
+  if (o.ext){ o.a = 'out'; o.b = inside ? inside.id : null; o.room = o.b; }
+  else { o.a = s1.id; o.b = s2.id; o.room = null; }
+  return o;
+}
+
+/** Walls minus the openings cut into them — what actually blocks sight. */
+function deriveSolids(){
+  const out = [];
+  for (const wl of WALLS){
+    const gaps = OPENINGS.filter(o =>
+        (o.o==='h') === wl.h &&
+        Math.abs((wl.h ? o.y : o.x) - wl.f) < 2 &&
+        (wl.h ? o.x : o.y) > wl.a && (wl.h ? o.x : o.y) < wl.b)
+      .map(o => { o.wall = wl; const c = wl.h ? o.x : o.y; return [c-o.w/2, c+o.w/2]; })
+      .sort((p,q)=>p[0]-q[0]);
+    let cur = wl.a;
+    const push = (s,e)=>{
+      if (e-s < .5) return;
+      out.push(wl.h ? {x1:s, y1:wl.f, x2:e, y2:wl.f, ext:wl.ext}
+                    : {x1:wl.f, y1:s, x2:wl.f, y2:e, ext:wl.ext});
+    };
+    for (const g of gaps){ if (g[0] > cur) push(cur, g[0]); cur = Math.max(cur, g[1]); }
+    push(cur, wl.b);
+  }
+  return out;
+}
+
+/** Room adjacency graph, from the doors. */
+function deriveAdj(){
+  const adj = {};
+  for (const d of DOORS){
+    if (d.a === 'out' || d.b === 'out' || !d.a || !d.b) continue;
+    (adj[d.a] ||= []).push({to:d.b, door:d});
+    (adj[d.b] ||= []).push({to:d.a, door:d});
+  }
+  return adj;
+}
+
+/** Recompute everything derived. Call after any change to rooms or openings. */
+function rebuildPlan(){
+  ROOMS   = PLAN.rooms;
+  DOORS   = PLAN.doors;
+  WINDOWS = PLAN.windows;
+  DOORS.forEach(d => d.kind = 'door');
+  WINDOWS.forEach(w => w.kind = 'window');
+  OPENINGS = [...DOORS, ...WINDOWS];
+  WALLS  = deriveWalls();
+  OPENINGS.forEach(openingTopology);
+  // an opening that no longer sits on a wall, or that leads nowhere, is dropped
+  const orphans = OPENINGS.filter(o => !o.b || !wallUnder(o));
+  if (orphans.length){
+    const ids = new Set(orphans.map(o=>o.id));
+    PLAN.doors   = DOORS   = DOORS.filter(d => !ids.has(d.id));
+    PLAN.windows = WINDOWS = WINDOWS.filter(w => !ids.has(w.id));
+    OPENINGS = [...DOORS, ...WINDOWS];
+  }
+  SOLIDS = deriveSolids();
+  ADJ = deriveAdj();
+  const list = (PLAN.scenarios && PLAN.scenarios.length) ? PLAN.scenarios : autoScenarios();
+  SCENARIOS = list.filter(scenarioValid);     // never offer one the plan cannot support
+  S.coverGrid = null;
+  return orphans;
+}
+
+/** Can this scenario still run against the plan as it stands? */
+function scenarioValid(s){
+  if (!s) return false;
+  const room = id => !!roomById(id);
+  const entry = id => { const o = byId(id); return (o && o.ext && o.b && roomById(o.b)) ? o : null; };
+  if (s.kind === 'pet')    return ROOMS.length > 1 && DOORS.some(d=>!d.ext);
+  if (s.kind === 'fire')   return s.room ? room(s.room) : ROOMS.length > 0;
+  if (s.kind === 'indoor') return room(s.from) && room(s.to) && s.from !== s.to && bfs(s.from, s.to) !== null;
+  const e = entry(s.entry);
+  if (!e || !room(s.target) || bfs(e.b, s.target) === null) return false;
+  if (s.second){
+    const e2 = entry(s.second.entry);
+    if (!e2 || !room(s.second.target) || bfs(e2.b, s.second.target) === null) return false;
+  }
+  return true;
+}
+
+/** The wall an opening lies on, if it fits entirely within one. */
+function wallUnder(o){
+  return WALLS.find(wl =>
+    (o.o==='h') === wl.h &&
+    Math.abs((wl.h ? o.y : o.x) - wl.f) < 2 &&
+    (wl.h ? o.x : o.y) - o.w/2 >= wl.a - 0.01 &&
+    (wl.h ? o.x : o.y) + o.w/2 <= wl.b + 0.01);
+}
+
+function loadPlan(plan){
+  PLAN = plan;
+  const dropped = rebuildPlan();
+  return dropped;
+}
+const clonePlan = p => JSON.parse(JSON.stringify(p));
+const isCustomPlan = () => !!(PLAN && PLAN.custom);
+
+/* outward normal for an exterior opening — points away from the room it serves */
+function outward(o){
+  if (o.o==='h') return {x:0, y: roomAtRaw(o.x, o.y-6) ? 1 : -1};
+  return {x: roomAtRaw(o.x-6, o.y) ? 1 : -1, y:0};
+}
+
+/* ------------------------------------------------------------
+   2. Geometry helpers
+   ------------------------------------------------------------ */
+function segHit(ax,ay,bx,by, cx,cy,dx,dy){
+  const r1 = (bx-ax), r2 = (by-ay), s1 = (dx-cx), s2 = (dy-cy);
+  const den = r1*s2 - r2*s1;
+  if (Math.abs(den) < 1e-9) return false;
+  const t = ((cx-ax)*s2 - (cy-ay)*s1)/den;
+  const u = ((cx-ax)*r2 - (cy-ay)*r1)/den;
+  return t>=0 && t<=1 && u>=0 && u<=1;
+}
+function losClear(x1,y1,x2,y2){
+  for (const s of SOLIDS) if (segHit(x1,y1,x2,y2,s.x1,s.y1,s.x2,s.y2)) return false;
+  return true;
+}
+/** distance from (x,y) along angle a until a wall is hit, capped at max */
+function rayCast(x,y,a,max){
+  const ex = x+Math.cos(a)*max, ey = y+Math.sin(a)*max;
+  let best = max;
+  const rx = ex-x, ry = ey-y;
+  for (const s of SOLIDS){
+    const sx = s.x2-s.x1, sy = s.y2-s.y1;
+    const den = rx*sy - ry*sx;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((s.x1-x)*sy - (s.y1-y)*sx)/den;
+    const u = ((s.x1-x)*ry - (s.y1-y)*rx)/den;
+    if (t>=0 && t<=1 && u>=0 && u<=1) best = Math.min(best, t*max);
+  }
+  return best;
+}
+function angDiff(a,b){ let d = (a-b)%TAU; if (d>Math.PI) d-=TAU; if (d<-Math.PI) d+=TAU; return Math.abs(d); }
+function pointSeesTarget(dev, tx, ty){
+  const d = dist(dev.x,dev.y,tx,ty);
+  if (d > dev.range) return false;
+  if (dev.fov < 359){
+    const a = Math.atan2(ty-dev.y, tx-dev.x);
+    if (angDiff(a, dev.angle*Math.PI/180) > dev.fov*Math.PI/360) return false;
+  }
+  return losClear(dev.x,dev.y,tx,ty);
+}
+
+/* ------------------------------------------------------------
+   3. Device catalogue
+   ------------------------------------------------------------ */
+const ZONE_LABEL = {
+  ENTRY:'Entry / Exit', PERIM:'Perimeter (instant)',
+  INTERIOR:'Interior follower', H24:'24-hour'
+};
+const CATALOG = {
+  panel:   {name:'Control Panel',  price:199, color:'#7dd3fc', place:'room',   max:1,
+            desc:'The brain. Required before the system can be armed.'},
+  keypad:  {name:'Keypad',         price:59,  color:'#a5b4fc', place:'room',
+            desc:'Arm / disarm point. Put it by the entry door.'},
+  doorC:   {name:'Door Contact',   price:25,  color:'#34d399', place:'door', zone:'PERIM',
+            desc:'Magnetic reed switch. Trips when the door opens.'},
+  winC:    {name:'Window Contact', price:25,  color:'#22d3ee', place:'window', zone:'PERIM',
+            desc:'Trips when the window opens or is smashed.'},
+  motion:  {name:'Motion (PIR)',   price:45,  color:'#fbbf24', place:'room', zone:'INTERIOR',
+            range:210, fov:95, desc:'Passive infrared. Needs line of sight.'},
+  glass:   {name:'Glass Break',    price:55,  color:'#f472b6', place:'room', zone:'PERIM',
+            range:230, fov:360, desc:'Acoustic. Hears any window broken in range.'},
+  camera:  {name:'Camera',         price:129, color:'#c084fc', place:'any',  zone:'INTERIOR', noAlarmDefault:true,
+            range:280, fov:72,  desc:'Records evidence. Alarms only if AI detection is on.'},
+  siren:   {name:'Siren',          price:79,  color:'#f87171', place:'any',
+            desc:'Makes the noise. Without one an alarm is silent.'},
+  smoke:   {name:'Smoke Detector', price:49,  color:'#fb923c', place:'room', zone:'H24',
+            range:250, fov:360, desc:'24-hour zone — fires even when disarmed.'},
+};
+const ORDER = ['panel','keypad','doorC','winC','motion','glass','camera','siren','smoke'];
+
+/* ------------------------------------------------------------
+   4. State
+   ------------------------------------------------------------ */
+const S = {
+  devices: [],
+  sel: null,
+  mode: 'DISARMED',        // DISARMED | EXIT | ARMED | ENTRY
+  armMode: null,           // 'home' | 'away'
+  alarm: false, alarmT: 0, dispatched:false,
+  countdown: 0,
+  clock: 0,
+  entryDelay: 30, exitDelay: 60,
+  showCoverage:false, showCones:true, muted:false,
+  edit: {on:false, tool:'select', sel:null, drag:null, hover:null},
+  sim: {running:false, paused:false, speed:1, actors:[], fire:null, t:0, scenario:null,
+        detectT:null, alarmT:null, footage:0, reached:false, falseAlarm:false},
+  coverGrid: null,
+};
+const log = [];
+
+function addLog(text, kind='info'){
+  log.push({t:S.clock, text, kind});
+  if (log.length > 300) log.shift();
+  renderLog();
+}
+const mmss = t => String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0');
+
+/* ------------------------------------------------------------
+   5. Audio
+   ------------------------------------------------------------ */
+const Audio_ = {
+  ctx:null, siren:null,
+  init(){
+    if (this.ctx) return;
+    try { this.ctx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){}
+  },
+  blip(freq=880, dur=.08, type='square', vol=.07){
+    if (S.muted) return; this.init(); if (!this.ctx) return;
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, c.currentTime);
+    g.gain.linearRampToValueAtTime(vol, c.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001, c.currentTime+dur);
+    o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+dur+.02);
+  },
+  chime(){ this.blip(1046,.16,'sine',.09); setTimeout(()=>this.blip(784,.3,'sine',.09),160); },
+  sirenOn(){
+    if (S.muted || this.siren) return; this.init(); if (!this.ctx) return;
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+    o.type='sawtooth'; o.frequency.value = 760;
+    lfo.type='triangle'; lfo.frequency.value = 2.2; lg.gain.value = 320;
+    lfo.connect(lg).connect(o.frequency);
+    g.gain.value = .055;
+    o.connect(g).connect(c.destination);
+    o.start(); lfo.start();
+    this.siren = {o,g,lfo};
+  },
+  sirenOff(){ if (!this.siren) return; try{this.siren.o.stop();this.siren.lfo.stop();}catch(e){} this.siren=null; },
+};
+
+/* ------------------------------------------------------------
+   6. Devices
+   ------------------------------------------------------------ */
+function makeDevice(type, x, y, attach){
+  const c = CATALOG[type];
+  return {
+    id: uid('dev'), type, x, y,
+    angle: 0,
+    range: c.range || 0,
+    fov: c.fov || 0,
+    zone: c.zone || null,
+    bypassed:false, chime: type==='doorC'||type==='winC',
+    petImmune: type==='motion',
+    aiDetect: false,
+    attachedTo: attach || null,
+    tripped:false, hold:0, cool:0, seeing:false, name:null,
+  };
+}
+function devName(d){
+  if (d.name) return d.name;
+  if (d.attachedTo && byId(d.attachedTo)) return byId(d.attachedTo).name;
+  const r = roomAt(d.x, d.y);
+  return CATALOG[d.type].name + ' — ' + (r ? r.name : 'Outdoors');
+}
+const countOf = t => S.devices.filter(d=>d.type===t).length;
+const totalCost = () => S.devices.reduce((s,d)=>s+CATALOG[d.type].price,0);
+const hasPanel = () => countOf('panel') > 0;
+
+/** Where can this type legally go? Returns {ok, x, y, attach, why} */
+function validatePlacement(type, x, y, ignoreId){
+  const c = CATALOG[type];
+  if (c.max && countOf(type) >= c.max && !ignoreId)
+    return {ok:false, why:`Only ${c.max} ${c.name} allowed`};
+
+  if (c.place === 'door' || c.place === 'window'){
+    const pool = c.place === 'door' ? DOORS.filter(d=>!d.arch) : WINDOWS;
+    let best = null, bd = 60;
+    for (const o of pool){
+      const d = dist(x,y,o.x,o.y);
+      if (d < bd){ bd = d; best = o; }
+    }
+    if (!best) return {ok:false, why:`Drop onto a ${c.place}`};
+    const taken = S.devices.find(d=>d.attachedTo===best.id && d.id!==ignoreId);
+    if (taken) return {ok:false, why:`${best.name} already covered`};
+    return {ok:true, x:best.x, y:best.y, attach:best.id, label:best.name};
+  }
+
+  if (c.place === 'room'){
+    const r = roomAt(x,y);
+    if (!r) return {ok:false, why:'Must be inside a room'};
+    return {ok:true, x:clamp(x,r.x+16,r.x+r.w-16), y:clamp(y,r.y+16,r.y+r.h-16), label:r.name};
+  }
+  // 'any' — anywhere on the plot
+  if (x<10||x>W-10||y<10||y>H-10) return {ok:false, why:'Off the plot'};
+  return {ok:true, x, y, label: (roomAt(x,y)||{name:'Outdoors'}).name};
+}
+
+/** Sensors go in a corner and look across the room, so aim at the farthest corner. */
+function defaultAim(x, y){
+  const r = roomAt(x,y);
+  if (!r) return Math.atan2(350-y, 500-x)*180/Math.PI;   // outdoors: look at the house
+  let best = null, bd = -1;
+  for (const cx of [r.x+14, r.x+r.w-14]) for (const cy of [r.y+14, r.y+r.h-14]){
+    const d = dist(x,y,cx,cy);
+    if (d > bd){ bd = d; best = [cx,cy]; }
+  }
+  return Math.atan2(best[1]-y, best[0]-x)*180/Math.PI;
+}
+
+function placeDevice(type, x, y){
+  const v = validatePlacement(type, x, y);
+  if (!v.ok){ flash(v.why); return null; }
+  const d = makeDevice(type, v.x, v.y, v.attach);
+  if (d.fov && d.fov < 359) d.angle = defaultAim(v.x, v.y);
+  // entry/exit default for the front door & garage internal door
+  if (type==='doorC' && (v.attach==='d_front' || v.attach==='d_gar')) d.zone = 'ENTRY';
+  S.devices.push(d);
+  S.sel = d.id;
+  addLog(`Installed ${CATALOG[type].name} — ${v.label}`, 'ok');
+  changed();
+  return d;
+}
+function removeDevice(id){
+  const i = S.devices.findIndex(d=>d.id===id);
+  if (i<0) return;
+  addLog(`Removed ${devName(S.devices[i])}`, 'warn');
+  S.devices.splice(i,1);
+  if (S.sel===id) S.sel=null;
+  changed();
+}
+function changed(){ S.coverGrid=null; renderPalette(); renderInspector(); renderZones(); save(); }
+
+function flash(msg){
+  const h = document.getElementById('hint');
+  h.textContent = msg; h.style.color = 'var(--bad)';
+  clearTimeout(flash._t);
+  flash._t = setTimeout(()=>{ h.style.color=''; h.textContent = defaultHint(); }, 1800);
+}
+const defaultHint = () => S.devices.length
+  ? 'Click a device to configure · drag to move · Delete to remove'
+  : 'Drag devices from the left onto the floor plan';
+
+/* ------------------------------------------------------------
+   7. Coverage grid
+   ------------------------------------------------------------ */
+function coverage(){
+  if (S.coverGrid) return S.coverGrid;
+  const step = 18, cells = [];
+  const sensors = S.devices.filter(d=>d.type==='motion');
+  const cams = S.devices.filter(d=>d.type==='camera');
+  let tot=0, cov=0;
+  for (let y=step/2; y<H; y+=step){
+    for (let x=step/2; x<W; x+=step){
+      if (!roomAt(x,y)) continue;
+      tot++;
+      const m = sensors.some(d=>pointSeesTarget(d,x,y));
+      const c = cams.some(d=>pointSeesTarget(d,x,y));
+      if (m||c) cov++;
+      if (m||c) cells.push({x,y,m,c});
+    }
+  }
+  S.coverGrid = {cells, step, pct: tot? Math.round(cov/tot*100):0};
+  return S.coverGrid;
+}
+
+/* ------------------------------------------------------------
+   8. Arming / alarm logic
+   ------------------------------------------------------------ */
+function openFaults(){
+  return S.devices.filter(d=>(d.type==='doorC'||d.type==='winC') && !d.bypassed &&
+    byId(d.attachedTo) && (byId(d.attachedTo).open || byId(d.attachedTo).broken));
+}
+function arm(mode){
+  if (S.edit.on){ flash('Finish the blueprint first'); return; }
+  if (!hasPanel()){ flash('Install a Control Panel first'); addLog('Cannot arm — no control panel','warn'); return; }
+  if (!S.devices.some(d=>['doorC','winC','motion','glass'].includes(d.type))){
+    flash('No sensors installed'); addLog('Cannot arm — no sensors','warn'); return;
+  }
+  const f = openFaults();
+  if (f.length){
+    addLog(`Not ready to arm — ${f.map(devName).join(', ')} open`,'warn');
+    flash(`Not ready: ${devName(f[0])} open`); return;
+  }
+  S.armMode = mode;
+  if (S.exitDelay > 0){
+    S.mode='EXIT'; S.countdown = S.exitDelay;
+    addLog(`Arming ${mode.toUpperCase()} — exit delay ${S.exitDelay}s`,'info');
+  } else {
+    S.mode='ARMED'; addLog(`Armed ${mode.toUpperCase()}`,'ok');
+  }
+  Audio_.blip(660,.1); setTimeout(()=>Audio_.blip(990,.12),120);
+  renderStatus();
+}
+function disarm(byWhom='keypad'){
+  const wasAlarm = S.alarm;
+  S.mode='DISARMED'; S.armMode=null; S.countdown=0;
+  S.alarm=false; S.alarmT=0; S.dispatched=false;
+  Audio_.sirenOff();
+  addLog(wasAlarm ? `Alarm cancelled — disarmed by ${byWhom}` : `Disarmed by ${byWhom}`, 'ok');
+  Audio_.blip(990,.1); setTimeout(()=>Audio_.blip(660,.14),110);
+  renderStatus();
+}
+function triggerAlarm(reason){
+  if (S.alarm) return;
+  S.alarm = true; S.alarmT = 0; S.dispatched = false;
+  if (S.sim.alarmT===null && S.sim.running) S.sim.alarmT = S.sim.t;
+  addLog(`*** ALARM *** ${reason}`,'alarm');
+  if (S.devices.some(d=>d.type==='siren')) Audio_.sirenOn();
+  else addLog('No siren installed — the alarm is silent','warn');
+  renderStatus();
+}
+function zoneActive(d){
+  if (d.zone === 'H24') return true;
+  if (S.mode !== 'ARMED' && S.mode !== 'ENTRY') return false;
+  if (S.armMode === 'home' && d.zone === 'INTERIOR') return false;
+  return true;
+}
+function onTrip(d){
+  const label = devName(d);
+  if (d.type==='camera' && !d.aiDetect){ return; }
+
+  if (d.bypassed){ addLog(`${label} tripped (bypassed)`,'warn'); return; }
+
+  if (d.zone === 'H24'){
+    addLog(`${label} — 24-hour zone activated`,'alarm');
+    triggerAlarm(`${label}`); return;
+  }
+  if (S.mode === 'DISARMED'){
+    if (d.chime){ Audio_.chime(); addLog(`${label} — chime`,'info'); }
+    else addLog(`${label} activity (system disarmed)`,'info');
+    return;
+  }
+  if (S.mode === 'EXIT'){ addLog(`${label} — ignored during exit delay`,'info'); return; }
+  if (!zoneActive(d)){ addLog(`${label} — zone not active in ARM ${S.armMode.toUpperCase()}`,'info'); return; }
+  if (S.alarm){ addLog(`${label} tripped`,'alarm'); return; }
+
+  if (S.sim.detectT === null && S.sim.running) S.sim.detectT = S.sim.t;
+
+  if (d.zone === 'ENTRY'){
+    if (S.mode !== 'ENTRY'){
+      S.mode='ENTRY'; S.countdown = S.entryDelay;
+      addLog(`${label} opened — entry delay ${S.entryDelay}s`,'warn');
+      if (S.entryDelay === 0) triggerAlarm(label);
+    }
+  } else if (d.zone === 'INTERIOR'){
+    if (S.mode === 'ENTRY'){ addLog(`${label} — follower, entry delay running`,'warn'); }
+    else { addLog(`${label} detected movement`,'warn'); triggerAlarm(label); }
+  } else { // PERIM
+    addLog(`${label} violated`,'warn'); triggerAlarm(label);
+  }
+  renderStatus();
+}
+
+/* ------------------------------------------------------------
+   9. Sensors tick
+   ------------------------------------------------------------ */
+function sensorsTick(dt){
+  const actors = S.sim.actors;
+  for (const d of S.devices){
+    let trip = false;
+    const c = CATALOG[d.type];
+
+    if (d.type==='doorC' || d.type==='winC'){
+      const o = byId(d.attachedTo);
+      trip = !!o && (o.open || o.broken);
+    }
+    else if (d.type==='motion'){
+      trip = actors.some(a => a.alive && a.speed > 4 &&
+        !(d.petImmune && a.small) && pointSeesTarget(d, a.x, a.y));
+    }
+    else if (d.type==='glass'){
+      trip = WINDOWS.some(w => w.brokenT > 0 && dist(d.x,d.y,w.x,w.y) < d.range);
+    }
+    else if (d.type==='camera'){
+      const sees = actors.some(a=>a.alive && pointSeesTarget(d,a.x,a.y));
+      d.seeing = sees;
+      if (sees && actors.some(a=>a.alive && a.kind==='intruder' && pointSeesTarget(d,a.x,a.y)))
+        S.sim.footage += dt;
+      trip = sees && d.aiDetect && actors.some(a=>a.alive && !a.small && pointSeesTarget(d,a.x,a.y));
+    }
+    else if (d.type==='smoke'){
+      const f = S.sim.fire;
+      trip = !!f && dist(d.x,d.y,f.x,f.y) < d.range && f.smoke > (dist(d.x,d.y,f.x,f.y)/d.range)*0.9;
+    }
+
+    d.cool = Math.max(0, d.cool - dt);
+    if (trip && !d.latched && d.cool <= 0){ d.latched = true; d.cool = 5; onTrip(d); }
+    if (!trip && d.latched) d.latched = false;
+    if (trip) d.hold = 1.4; else d.hold = Math.max(0, d.hold - dt);
+    d.tripped = d.hold > 0;
+  }
+}
+
+/* ------------------------------------------------------------
+   10. Navigation & actors
+   ------------------------------------------------------------ */
+function bfs(from, to){
+  if (from===to) return [];
+  const prev = {}, q=[from], seen = new Set([from]);
+  while (q.length){
+    const cur = q.shift();
+    for (const e of (ADJ[cur]||[])){
+      if (seen.has(e.to)) continue;
+      seen.add(e.to); prev[e.to] = {from:cur, door:e.door}; q.push(e.to);
+      if (e.to===to){
+        const steps=[]; let n=to;
+        while (n!==from){ const p=prev[n]; steps.unshift({door:p.door, room:n}); n=p.from; }
+        return steps;
+      }
+    }
+  }
+  return null;
+}
+function pathFromOutside(entry, targetRoom){
+  const inner = entry.b;
+  const n = outward(entry);
+  const pts = [
+    {x: entry.x + n.x*85, y: entry.y + n.y*85, outside:true},
+    {x: entry.x, y: entry.y, opening: entry},
+    {x: roomCx(roomById(inner)), y: roomCy(roomById(inner))},
+  ];
+  const steps = bfs(inner, targetRoom) || [];
+  for (const s of steps){
+    pts.push({x:s.door.x, y:s.door.y, opening:s.door});
+    const r = roomById(s.room);
+    pts.push({x: roomCx(r), y: roomCy(r)});
+  }
+  return pts;
+}
+/** Route for somebody already inside: room to room, never leaving the building. */
+function pathBetween(fromRoom, toRoom){
+  const a = roomById(fromRoom);
+  const pts = [{x: roomCx(a), y: roomCy(a)}];
+  for (const s of (bfs(fromRoom, toRoom) || [])){
+    pts.push({x:s.door.x, y:s.door.y, opening:s.door});
+    const r = roomById(s.room);
+    pts.push({x: roomCx(r), y: roomCy(r)});
+  }
+  return pts;
+}
+
+function makeActor(kind, pts, opts={}){
+  return Object.assign({
+    kind, pts, i:1, x:pts[0].x, y:pts[0].y, px:pts[0].x, py:pts[0].y,
+    // the openings on this actor's own route — passing a doorway you are not
+    // going through does not open it
+    route: new Set(pts.filter(p=>p.opening).map(p=>p.opening.id)),
+    hdg:0, speed:0, baseSpeed: opts.speed || 78, dwell:0, alive:true,
+    small:false, phase:'in', returning:false, entered:false, trail:[],
+  }, opts);
+}
+function stepActor(a, dt){
+  if (!a.alive) return;
+  if (a.dwell > 0){ a.dwell -= dt; a.speed = 0; a.onDwell && a.onDwell(a); return; }
+  const t = a.pts[a.i];
+  if (!t){ a.onEnd && a.onEnd(a); return; }
+  const dx = t.x-a.x, dy = t.y-a.y, d = Math.hypot(dx,dy);
+  const v = a.baseSpeed * (a.hurry?1.55:1);
+  if (d < 6){
+    a.i++;
+    if (t.opening) a.onOpening && a.onOpening(a, t.opening);
+    if (a.i >= a.pts.length){ a.onEnd && a.onEnd(a); }
+    return;
+  }
+  const m = Math.min(v*dt, d);
+  a.px=a.x; a.py=a.y;
+  a.x += dx/d*m; a.y += dy/d*m;
+  a.hdg = Math.atan2(dy,dx);
+  a.speed = m/dt;
+  a.trail.push({x:a.x,y:a.y});
+  if (a.trail.length > 150) a.trail.shift();
+}
+
+/* ------------------------------------------------------------
+   11. Scenarios
+   ------------------------------------------------------------ */
+/** How many doors deep each room is from a starting room. */
+function roomDepths(from){
+  const d = {[from]:0}, q=[from];
+  while (q.length){
+    const cur = q.shift();
+    for (const e of (ADJ[cur]||[])) if (!(e.to in d)){ d[e.to] = d[cur]+1; q.push(e.to); }
+  }
+  return d;
+}
+/** Deepest reachable room from an entry — where a burglar would head. */
+function deepestFrom(startRoom){
+  if (!startRoom) return ROOMS.length ? ROOMS[0].id : null;
+  const d = roomDepths(startRoom);
+  let best = startRoom, bd = -1;
+  for (const [id, hops] of Object.entries(d)){
+    const r = roomById(id); if (!r) continue;
+    const score = hops*1000 + r.w*r.h/1000;
+    if (score > bd){ bd = score; best = id; }
+  }
+  return best;
+}
+
+/** Scenario list for a plan that did not ship with one. */
+function autoScenarios(){
+  const out = [];
+  if (!ROOMS.length) return out;
+  // an exterior archway is just a hole in the wall — the easiest way in of all
+  const extDoors = DOORS.filter(d => d.ext && d.b);
+  const extWins  = WINDOWS.filter(w => w.ext && w.b);
+  const realDoors = extDoors.filter(d => !d.arch);
+
+  for (const d of extDoors.slice(0,4))
+    out.push({id:'in_'+d.id, name:`Intruder — ${d.arch?'straight through the ':''}${d.name}`,
+              entry:d.id, target:deepestFrom(d.b)});
+  for (const w of extWins.slice(0,2))
+    out.push({id:'sm_'+w.id, name:`Intruder — smashes ${w.name}`, entry:w.id, target:deepestFrom(w.b)});
+  if (extDoors.length && extWins.length)
+    out.push({id:'two', name:'Two intruders — split entry',
+      entry:extDoors[0].id, target:deepestFrom(extDoors[0].b),
+      second:{entry:extWins[extWins.length-1].id, target:deepestFrom(extWins[extWins.length-1].b)}});
+  const front = realDoors[0] || extDoors[0];
+  if (front)
+    out.push({id:'resident', name:'Resident comes home', kind:'resident',
+      entry:front.id, target:deepestFrom(front.b)});
+
+  // the two rooms furthest apart in the graph, for the walk-around test
+  if (ROOMS.length > 1){
+    let pair = null, bd = -1;
+    for (const a of ROOMS){
+      const d = roomDepths(a.id);
+      for (const [id, hops] of Object.entries(d)){
+        if (id === a.id) continue;
+        const b = roomById(id); if (!b) continue;
+        const score = hops*1000 + dist(roomCx(a),roomCy(a),roomCx(b),roomCy(b));
+        if (score > bd){ bd = score; pair = [a, b]; }
+      }
+    }
+    if (pair) out.push({id:'night', name:`Resident — ${pair[0].name} to ${pair[1].name}`,
+                        kind:'indoor', from:pair[0].id, to:pair[1].id});
+  }
+  out.push({id:'pet', name:'Pet roams (false alarm test)', kind:'pet'});
+  const fireRoom = ROOMS.reduce((a,b)=> a.w*a.h >= b.w*b.h ? a : b);
+  out.push({id:'fire', name:`Fire in the ${fireRoom.name}`, kind:'fire', room:fireRoom.id});
+  return out;
+}
+
+/** Put the building back the way it was: doors shut, glazing repaired, sensors restored. */
+function restoreProperty(){
+  for (const o of OPENINGS){ o.open=false; o.openT=0; o.broken=false; o.brokenT=0; }
+  for (const d of S.devices){ d.tripped=false; d.latched=false; d.hold=0; d.cool=0; d.seeing=false; }
+}
+
+function resetSim(){
+  S.sim.running=false; S.sim.paused=false; S.sim.actors=[]; S.sim.fire=null; S.sim.t=0;
+  S.sim.detectT=null; S.sim.alarmT=null; S.sim.footage=0; S.sim.reached=false; S.sim.falseAlarm=false;
+  S.sim.armedAs=null;
+  restoreProperty();
+  document.getElementById('bPause').disabled = true;
+  document.getElementById('bRun').textContent = '▶ Run';
+}
+
+function runSim(){
+  if (S.sim.running){ resetSim(); renderStatus(); return; }
+  if (S.edit.on){ flash('Finish the blueprint first'); return; }
+  Audio_.init();
+  resetSim();
+  const sc = SCENARIOS.find(s=>s.id === document.getElementById('scenario').value) || SCENARIOS[0];
+  if (!sc){ flash('No scenarios — the plan needs rooms and a door'); S.sim.running=false; return; }
+  if (!scenarioValid(sc)){                     // the plan changed under it
+    addLog(`"${sc.name}" no longer fits this plan`,'warn');
+    flash('That scenario no longer fits the plan');
+    refreshScenarioList();
+    S.sim.running = false;
+    document.getElementById('bRun').textContent = '▶ Run';
+    return;
+  }
+  S.sim.scenario = sc;
+  S.sim.running = true; S.sim.t = 0;
+  S.sim.armedAs = S.mode === 'DISARMED' ? null : S.armMode;
+  document.getElementById('bPause').disabled = false;
+  document.getElementById('bRun').textContent = '■ Stop';
+  addLog(`▶ Scenario: ${sc.name}`,'info');
+  if (S.mode==='DISARMED' && !['fire','resident','indoor'].includes(sc.kind))
+    addLog('System is DISARMED — nothing will be reported','warn');
+
+  if (sc.kind === 'indoor'){
+    // somebody who is already in the house, moving between rooms
+    const a = makeActor('resident', pathBetween(sc.from, sc.to), {speed:66});
+    addLog(`Resident sets off from the ${roomById(sc.from).name}`,'info');
+    a.onOpening = (ac, o) => { o.open = true; o.openT = 2.2; };
+    a.onEnd = ac => {
+      if (ac.phase !== 'in') return;
+      ac.phase = 'done';
+      addLog(`Resident reached the ${roomById(sc.to).name}`, S.alarm ? 'warn' : 'ok');
+      ac.dwell = 4;
+      ac.onDwell = x => { if (x.dwell <= 0){ x.alive = false; endSim(); } };
+    };
+    S.sim.actors.push(a);
+    return;
+  }
+
+  if (sc.kind === 'fire'){
+    const fr = roomById(sc.room) || ROOMS[0];
+    S.sim.fire = {x: roomCx(fr), y: roomCy(fr) - fr.h*0.18, smoke:0, endIn:4};
+    addLog(`Fire starts in the ${fr.name}`,'warn');
+    return;
+  }
+  if (sc.kind === 'pet'){
+    // tour of up to five rooms, starting wherever the pet was asleep
+    const tour = ROOMS.map(r=>r.id).slice(0, 5);
+    const start = tour[tour.length-1];
+    const pts = [{x:roomCx(roomById(start)), y:roomCy(roomById(start))}];
+    let cur = start;
+    for (const r of tour){
+      for (const s of (bfs(cur, r) || [])){
+        pts.push({x:s.door.x, y:s.door.y, opening:s.door});
+        const rr = roomById(s.room); pts.push({x:roomCx(rr), y:roomCy(rr)});
+      }
+      cur = r;
+    }
+    if (pts.length < 2){ endSim(); return; }
+    const a = makeActor('pet', pts, {speed:62, small:true});
+    let laps = 0;
+    a.onEnd = x => { if (++laps >= 1){ x.alive = false; endSim(); } else x.i = 1; };
+    S.sim.actors.push(a);
+    return;
+  }
+
+  const spawn = (entryId, targetId, kind) => {
+    const entry = byId(entryId);
+    const pts = pathFromOutside(entry, targetId);
+    const a = makeActor(kind, pts, {speed: kind==='resident'?70:84});
+    a.entryOpening = entry;
+    a.targetRoom = targetId;
+    a.onOpening = (ac, o) => {
+      if (o.kind === 'window' && ac.kind === 'intruder' && !ac.entered){
+        o.broken = true; o.brokenT = 3.5;
+        addLog(`${o.name} smashed`,'warn');
+      } else {
+        o.open = true; o.openT = 2.2;
+      }
+      if (!ac.entered){ ac.entered = true; }
+    };
+    a.onEnd = ac => {
+      if (ac.phase === 'in'){
+        ac.phase = 'dwell';
+        ac.dwell = kind === 'resident' ? 2.5 : 5;
+        if (kind === 'intruder'){
+          S.sim.reached = true;
+          addLog(`Intruder reached the ${roomById(targetId).name}`, S.alarm?'warn':'alarm');
+        }
+        ac.onDwell = x => {
+          if (x.dwell <= 0 && x.phase === 'dwell'){
+            x.phase = 'out';
+            x.pts = [...x.pts].reverse();
+            x.i = 0; x.hurry = true;
+            if (kind==='intruder') addLog('Intruder is leaving','info');
+          }
+        };
+      } else {
+        ac.alive = false;
+        if (kind==='intruder') addLog('Intruder escaped the property','warn');
+        if (!S.sim.actors.some(z=>z.alive)) endSim();
+      }
+    };
+    if (kind === 'resident'){
+      a.onEnd = ac => {
+        if (ac.phase === 'in'){
+          ac.phase='done';
+          const kp = S.devices.find(d=>d.type==='keypad');
+          if (S.mode==='ENTRY' || S.mode==='ARMED' || S.mode==='EXIT'){
+            if (kp) disarm('resident at keypad');
+            else addLog('Resident has no keypad to disarm at!','warn');
+          }
+          ac.dwell = 4;
+          ac.onDwell = x => { if (x.dwell<=0){ x.alive=false; endSim(); } };
+        }
+      };
+    }
+    S.sim.actors.push(a);
+  };
+
+  spawn(sc.entry, sc.target, sc.kind || 'intruder');
+  if (sc.second) spawn(sc.second.entry, sc.second.target, 'intruder');
+}
+
+function endSim(){
+  if (!S.sim.running) return;
+  S.sim.running = false;
+  document.getElementById('bPause').disabled = true;
+  document.getElementById('bRun').textContent = '▶ Run';
+  const report = {...S.sim, scenario:S.sim.scenario, mode:S.mode};
+  addLog('■ Scenario finished','info');
+  restoreProperty();               // doors shut, glazing repaired — so you can arm again
+  addLog('Property restored — doors closed, glazing repaired','info');
+  showReport(report);
+}
+
+/* ------------------------------------------------------------
+   12. Scoring
+   ------------------------------------------------------------ */
+function showReport(r){
+  r = r || S.sim;
+  const sc = r.scenario;
+  const cov = coverage().pct;
+  const cost = totalCost();
+  const det = r.detectT, alm = r.alarmT;
+  let score = 100; const notes = [];
+
+  if (sc && sc.kind === 'indoor'){
+    const armed = r.armedAs;
+    if (!S.alarm){
+      score = 100;
+      if (armed === 'home')
+        notes.push(`The resident walked from the ${roomById(sc.from).name} to the ${roomById(sc.to).name} without setting anything off — that is exactly what Arm Home is for.`);
+      else if (armed === 'away')
+        notes.push('No alarm, but nothing was watching the inside of the house either. Check the interior zones are actually active in Arm Away.');
+      else
+        notes.push('The system was disarmed, so this did not test much. Arm Home and run it again.');
+    } else {
+      score = armed === 'away' ? 70 : 35;
+      notes.push(armed === 'away'
+        ? 'The alarm fired — which is what Arm Away is supposed to do, because it assumes the house is empty. If somebody is staying in, arm Home instead.'
+        : `A resident walking from the ${roomById(sc.from).name} to the ${roomById(sc.to).name} set the alarm off in Arm Home. Look at which zone tripped: an interior door on a Perimeter zone fires instantly even in Home mode, where an Interior follower would have stayed quiet.`);
+    }
+  } else if (sc && sc.kind === 'pet'){
+    const fa = S.alarm;
+    score = fa ? 40 : 100;
+    notes.push(fa
+      ? 'The pet set the alarm off. Enable pet immunity on motion sensors, or raise them above pet height.'
+      : 'No false alarm from the pet — good sensor configuration.');
+  } else if (sc && sc.kind === 'resident'){
+    score = S.alarm ? 45 : 100;
+    notes.push(S.alarm
+      ? 'The resident triggered a full alarm. Add a keypad near the entry door and set that door to an Entry/Exit zone.'
+      : 'The resident disarmed in time — entry path is configured correctly.');
+  } else if (sc && sc.kind === 'fire'){
+    score = S.alarm ? 100 : 25;
+    notes.push(S.alarm ? 'Smoke was detected and reported.' :
+      'The fire went undetected. Smoke detectors are a 24-hour zone — they work even when disarmed.');
+  } else {
+    if (det === null){ score -= 60; notes.push('The intruder was never detected. Cover the entry points and the route to the valuables.'); }
+    else if (det > 20){ score -= 25; notes.push(`Detection took ${det.toFixed(1)}s — too slow. Protect the perimeter, not just the interior.`); }
+    else if (det > 10){ score -= 15; notes.push(`Detection took ${det.toFixed(1)}s. A contact on the entry point would catch it instantly.`); }
+    else if (det !== null) notes.push(`Detected in ${det.toFixed(1)}s — the perimeter is doing its job.`);
+
+    if (alm === null){
+      score -= 30;
+      if (r.mode === 'ENTRY')
+        notes.push(`The entry delay (${S.entryDelay}s) was still counting down when the intruder left. That is longer than the whole burglary took — shorten it, or put the door on a Perimeter zone.`);
+      else
+        notes.push('No alarm was raised. Check the system was armed and that the tripped zones are active in this arming mode.');
+    }
+    if (!S.devices.some(d=>d.type==='siren')){ score -= 10; notes.push('No siren installed — an alarm nobody can hear does not deter anyone.'); }
+    if (r.footage < 1.5){ score -= 10; notes.push('Little or no camera footage of the intruder. Cameras give you evidence, not just detection.'); }
+    else notes.push(`${r.footage.toFixed(1)}s of camera footage captured.`);
+    if (r.reached && (alm === null || alm > 30)){
+      score -= 15; notes.push('The intruder reached the target. Faster detection at the perimeter would buy you time.');
+    }
+    if (cov < 35){ score -= 10; notes.push(`Only ${cov}% of the floor area is watched by a motion sensor or camera — press Coverage to see the gaps.`); }
+  }
+  if (cost > 1000){ score -= 5; notes.push(`System costs $${cost} — there may be cheaper coverage.`); }
+  score = clamp(Math.round(score), 0, 100);
+  const grade = score>=90?'A':score>=80?'B':score>=68?'C':score>=55?'D':'F';
+  const gcol  = score>=80?'var(--accent)':score>=55?'var(--warn)':'var(--bad)';
+
+  const rows = [
+    ['Scenario', sc ? sc.name : '—'],
+    ['Time to first detection', det===null ? '— never —' : det.toFixed(1)+'s'],
+    ['Time to alarm', alm===null ? '— none —' : alm.toFixed(1)+'s'],
+    ['Camera footage', r.footage.toFixed(1)+'s'],
+    ['Floor coverage', cov+'%'],
+    ['Devices installed', S.devices.length],
+    ['System cost', '$'+cost],
+  ];
+  openModal(`
+    <div class="grade" style="color:${gcol}">${grade}</div>
+    <h2>Scenario report</h2>
+    <div class="sub">Score ${score}/100</div>
+    <ul class="mlist">${rows.map(r=>`<li><span>${r[0]}</span><span>${r[1]}</span></li>`).join('')}</ul>
+    <ul class="notes">${notes.map(n=>`<li>${n}</li>`).join('')}</ul>
+    <div class="acts"><button class="btn pri" onclick="closeModal()">Close</button></div>
+  `);
+}
+
+/* ------------------------------------------------------------
+   13. Main loop
+   ------------------------------------------------------------ */
+let last = performance.now();
+function loop(now){
+  const raw = clamp((now-last)/1000, 0, .05); last = now;
+  const sp = S.sim.running && !S.sim.paused ? S.sim.speed : 1;
+  const dt = raw * sp;
+  S.clock += dt;
+
+  // openings relax
+  for (const o of OPENINGS){
+    if (o.openT > 0){ o.openT -= dt; if (o.openT<=0) o.open=false; }
+    if (o.brokenT > 0) o.brokenT -= dt;
+  }
+
+  if (S.sim.running && !S.sim.paused){
+    S.sim.t += dt;
+    for (const a of S.sim.actors){
+      stepActor(a, dt);
+      // a person standing in a doorway on their route holds it open;
+      // a pet does not open doors at all
+      if (a.alive && !a.small){
+        for (const d of DOORS)
+          if (!d.arch && a.route.has(d.id) && dist(a.x,a.y,d.x,d.y) < 32){ d.open=true; d.openT=1.6; }
+      }
+    }
+    if (S.sim.fire){
+      const f = S.sim.fire;
+      f.smoke = Math.min(1, f.smoke + dt*0.13);
+      if (f.smoke >= 1){ f.endIn -= dt; if (f.endIn <= 0) endSim(); }
+    }
+  }
+
+  sensorsTick(dt);
+
+  // countdowns
+  if (S.countdown > 0 && (S.mode==='EXIT' || S.mode==='ENTRY')){
+    const before = Math.ceil(S.countdown);
+    S.countdown -= dt;
+    const after = Math.ceil(S.countdown);
+    if (after !== before && after >= 0){
+      const fast = S.countdown < 10;
+      Audio_.blip(S.mode==='ENTRY'? (fast?1100:760) : 620, .06,'square',.05);
+      if (fast && S.mode==='ENTRY') setTimeout(()=>Audio_.blip(1100,.05,'square',.04),250);
+    }
+    if (S.countdown <= 0){
+      S.countdown = 0;
+      if (S.mode==='EXIT'){ S.mode='ARMED'; addLog(`Armed ${S.armMode.toUpperCase()}`,'ok'); Audio_.blip(880,.2,'sine',.08); }
+      else { triggerAlarm('Entry delay expired'); S.mode='ARMED'; }
+    }
+    renderStatus();
+  }
+
+  if (S.alarm){
+    S.alarmT += dt;
+    if (!S.dispatched && S.alarmT > 8){
+      S.dispatched = true;
+      addLog('Monitoring centre notified — police dispatched','alarm');
+    }
+  }
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------------------------------------
+   14. Rendering
+   ------------------------------------------------------------ */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+function fitCanvas(){
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  cv.width = W*dpr; cv.height = H*dpr;
+  cv.style.aspectRatio = W+'/'+H;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+fitCanvas();
+addEventListener('resize', fitCanvas);
+
+function draw(){
+  ctx.setTransform(Math.min(devicePixelRatio||1,2),0,0,Math.min(devicePixelRatio||1,2),0,0);
+  ctx.clearRect(0,0,W,H);
+
+  // backdrop
+  ctx.fillStyle = '#0b0f1a'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = '#121a2b'; ctx.lineWidth = 1;
+  for (let x=0;x<W;x+=25){ ctx.beginPath(); ctx.moveTo(x+.5,0); ctx.lineTo(x+.5,H); ctx.stroke(); }
+  for (let y=0;y<H;y+=25){ ctx.beginPath(); ctx.moveTo(0,y+.5); ctx.lineTo(W,y+.5); ctx.stroke(); }
+
+  // floors
+  for (const r of ROOMS){
+    ctx.fillStyle = '#151c2c';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+  }
+  ctx.fillStyle = '#50607f'; ctx.font = '600 11px ui-sans-serif,system-ui'; ctx.textAlign='left';
+  ctx.letterSpacing = '1px';
+  for (const r of ROOMS) ctx.fillText(r.name.toUpperCase(), r.x+13, r.y+21);
+  ctx.letterSpacing = '0px';
+
+  if (S.showCoverage) drawCoverage();
+
+  drawOpenings();
+  drawWalls();
+
+  // sensor cones — clipped to the building so they don't spill across the garden
+  inBuilding(()=>{
+    if (S.showCones){
+      // omnidirectional sensors (glass break, smoke) cover huge discs — only show
+      // them when they matter, or the plan turns to soup
+      for (const d of S.devices)
+        if (d.range && (d.fov < 359 || d.id === S.sel || d.tripped)) drawCone(d, d.id===S.sel);
+    } else if (S.sel){
+      const d = S.devices.find(x=>x.id===S.sel);
+      if (d && d.range) drawCone(d, true);
+    }
+  });
+
+  if (S.sim.fire) drawFire(S.sim.fire);
+  for (const a of S.sim.actors) if (a.alive) drawActor(a);
+
+  if (S.edit.on) ctx.globalAlpha = 0.25;
+  for (const d of S.devices) drawDevice(d);
+  ctx.globalAlpha = 1;
+  if (S.edit.on) drawEditOverlay();
+
+  if (DRAG && DRAG.preview) drawPreview(DRAG.preview);
+
+  if (S.alarm){
+    const p = (Math.sin(S.clock*9)+1)/2;
+    ctx.save();
+    const g = ctx.createRadialGradient(W/2,H/2,H*0.25, W/2,H/2,H*0.95);
+    g.addColorStop(0,'rgba(255,0,0,0)');
+    g.addColorStop(1,`rgba(255,30,40,${0.14+0.22*p})`);
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+  drawHUD();
+}
+
+function drawWalls(){
+  for (const s of SOLIDS){
+    ctx.strokeStyle = s.ext ? '#9fb0d0' : '#5e6c8c';
+    ctx.lineWidth = s.ext ? 9 : 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+
+function drawOpenings(){
+  // windows
+  for (const o of WINDOWS){
+    const horiz = o.o === 'h';
+    const a = horiz ? o.x-o.w/2 : o.y-o.w/2;
+    const b = horiz ? o.x+o.w/2 : o.y+o.w/2;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = o.broken ? '#ff6b6b' : '#6fd8ff';
+    ctx.beginPath();
+    if (horiz){ ctx.moveTo(a,o.y); ctx.lineTo(b,o.y); } else { ctx.moveTo(o.x,a); ctx.lineTo(o.x,b); }
+    ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = o.broken ? '#ff9c9c66' : '#6fd8ff55';
+    for (const off of [-4,4]){
+      ctx.beginPath();
+      if (horiz){ ctx.moveTo(a,o.y+off); ctx.lineTo(b,o.y+off); } else { ctx.moveTo(o.x+off,a); ctx.lineTo(o.x+off,b); }
+      ctx.stroke();
+    }
+    if (o.broken){
+      ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 1.4;
+      for (let i=0;i<5;i++){
+        const t = (i+1)/6, px = horiz ? a+(b-a)*t : o.x, py = horiz ? o.y : a+(b-a)*t;
+        ctx.beginPath(); ctx.moveTo(px,py);
+        ctx.lineTo(px+(Math.random()-.5)*16, py+(Math.random()-.5)*16); ctx.stroke();
+      }
+    }
+  }
+  // doors
+  for (const o of DOORS){
+    const horiz = o.o==='h';
+    const a = horiz ? o.x-o.w/2 : o.y-o.w/2;
+    const b = horiz ? o.x+o.w/2 : o.y+o.w/2;
+    // threshold
+    ctx.strokeStyle = '#2b344c'; ctx.lineWidth = 7;
+    ctx.beginPath();
+    if (horiz){ ctx.moveTo(a,o.y); ctx.lineTo(b,o.y); } else { ctx.moveTo(o.x,a); ctx.lineTo(o.x,b); }
+    ctx.stroke();
+    if (o.arch) continue;
+
+    const inner = roomById(o.b) || roomById(o.a);
+    const sign = horiz ? (roomCy(inner) > o.y ? 1 : -1) : (roomCx(inner) > o.x ? 1 : -1);
+    const hx = horiz ? a : o.x, hy = horiz ? o.y : a;
+    const open = o.open;
+    const ang = open ? 72*Math.PI/180 : 8*Math.PI/180;
+    const len = o.w;
+    let ex, ey;
+    if (horiz){ ex = hx + Math.cos(ang)*len; ey = hy + sign*Math.sin(ang)*len; }
+    else      { ex = hx + sign*Math.sin(ang)*len; ey = hy + Math.cos(ang)*len; }
+    ctx.strokeStyle = open ? '#ffb039' : '#7d8cb0';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(ex,ey); ctx.stroke();
+    ctx.strokeStyle = open ? '#ffb03955' : '#7d8cb033';
+    ctx.lineWidth = 1; ctx.setLineDash([3,4]);
+    ctx.beginPath();
+    const a0 = horiz ? 0 : Math.PI/2;
+    ctx.arc(hx,hy,len, horiz? (sign>0?0:-ang) : (sign>0? a0-ang : a0),
+                        horiz? (sign>0?ang:0) : (sign>0? a0 : a0+ang));
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+function drawCoverage(){
+  const g = coverage();
+  for (const c of g.cells){
+    ctx.fillStyle = c.m && c.c ? 'rgba(126,230,170,.26)'
+                  : c.m       ? 'rgba(251,191,36,.18)'
+                              : 'rgba(192,132,252,.16)';
+    ctx.fillRect(c.x-g.step/2, c.y-g.step/2, g.step, g.step);
+  }
+}
+
+/** clip everything drawn inside fn() to the building footprint */
+function inBuilding(fn){
+  ctx.save();
+  ctx.beginPath();
+  for (const r of ROOMS) ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.clip();
+  fn();
+  ctx.restore();
+}
+
+function drawCone(d, highlight){
+  const c = CATALOG[d.type];
+  const col = d.tripped ? '255,92,92' : hexToRgb(c.color);
+  ctx.save();
+  if (d.fov >= 359){
+    // omnidirectional (acoustic / smoke) — a plain radius, not a line-of-sight cone
+    ctx.beginPath(); ctx.arc(d.x,d.y,d.range,0,TAU);
+  } else {
+    const half = d.fov*Math.PI/360, base = d.angle*Math.PI/180, steps = 26;
+    ctx.beginPath(); ctx.moveTo(d.x,d.y);
+    for (let i=0;i<=steps;i++){
+      const a = base - half + 2*half*i/steps;
+      ctx.lineTo(d.x+Math.cos(a)*Math.min(d.range, rayCast(d.x,d.y,a,d.range)),
+                 d.y+Math.sin(a)*Math.min(d.range, rayCast(d.x,d.y,a,d.range)));
+    }
+    ctx.closePath();
+  }
+  const grad = ctx.createRadialGradient(d.x,d.y,4,d.x,d.y,d.range);
+  grad.addColorStop(0, `rgba(${col},${highlight?0.30:0.16})`);
+  grad.addColorStop(1, `rgba(${col},0.02)`);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = `rgba(${col},${highlight?0.7:0.26})`;
+  ctx.lineWidth = highlight ? 1.5 : 1;
+  if (d.fov >= 359) ctx.setLineDash([5,5]);
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+}
+function hexToRgb(h){
+  const n = parseInt(h.slice(1),16);
+  return `${(n>>16)&255},${(n>>8)&255},${n&255}`;
+}
+
+function drawDevice(d){
+  const c = CATALOG[d.type];
+  const sel = d.id === S.sel;
+  const trip = d.tripped;
+  ctx.save();
+  ctx.translate(d.x, d.y);
+
+  if (sel){
+    ctx.beginPath(); ctx.arc(0,0,20,0,TAU);
+    ctx.strokeStyle = '#ffffffaa'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (trip){
+    const p = (Math.sin(S.clock*11)+1)/2;
+    ctx.beginPath(); ctx.arc(0,0,16+p*7,0,TAU);
+    ctx.fillStyle = `rgba(255,70,70,${0.35*(1-p)})`; ctx.fill();
+  }
+  if (d.type==='siren' && S.alarm){
+    const p = (Math.sin(S.clock*12)+1)/2;
+    ctx.beginPath(); ctx.arc(0,0,18+p*26,0,TAU);
+    ctx.strokeStyle = `rgba(255,80,80,${0.55*(1-p)})`; ctx.lineWidth=3; ctx.stroke();
+  }
+
+  // badge
+  ctx.beginPath(); ctx.arc(0,0,13,0,TAU);
+  ctx.fillStyle = trip ? '#3a1216' : '#101624';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = trip ? '#ff5c5c' : (d.bypassed ? '#f5b73d' : c.color);
+  ctx.stroke();
+
+  ctx.strokeStyle = trip ? '#ff8f8f' : (d.bypassed ? '#f5b73d' : c.color);
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth = 1.6; ctx.lineJoin='round';
+  ctx.save(); ctx.scale(.72,.72); glyph(d.type); ctx.restore();
+
+  if (d.range && d.fov < 359){
+    // aim nub
+    const a = d.angle*Math.PI/180;
+    ctx.beginPath(); ctx.moveTo(Math.cos(a)*13,Math.sin(a)*13);
+    ctx.lineTo(Math.cos(a)*19,Math.sin(a)*19);
+    ctx.strokeStyle = c.color; ctx.lineWidth = 2.5; ctx.stroke();
+    if (sel){
+      ctx.beginPath(); ctx.arc(Math.cos(a)*34, Math.sin(a)*34, 6, 0, TAU);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = c.color; ctx.lineWidth=2; ctx.stroke();
+    }
+  }
+  if (d.bypassed){
+    ctx.strokeStyle = '#f5b73d'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-10,10); ctx.lineTo(10,-10); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function glyph(type){
+  const g = ctx;
+  switch(type){
+    case 'panel':
+      g.strokeRect(-7,-9,14,18);
+      g.beginPath(); for (const y of [-4,0,4]){ g.moveTo(-4,y); g.lineTo(4,y); } g.stroke(); break;
+    case 'keypad':
+      g.strokeRect(-6.5,-9,13,18);
+      for (const y of [-4.5,0,4.5]) for (const x of [-3.2,0,3.2]){ g.beginPath(); g.arc(x,y,1,0,TAU); g.fill(); }
+      break;
+    case 'doorC':
+      g.fillRect(-7,-6,5,12); g.fillRect(2,-6,5,12); break;
+    case 'winC':
+      g.strokeRect(-7,-6,5,12); g.strokeRect(2,-6,5,12);
+      g.beginPath(); g.moveTo(-2,0); g.lineTo(2,0); g.stroke(); break;
+    case 'motion':
+      g.beginPath(); g.arc(-6,0,2,0,TAU); g.fill();
+      for (let i=1;i<=3;i++){ g.beginPath(); g.arc(-6,0,i*3.4,-0.85,0.85); g.stroke(); }
+      break;
+    case 'glass':
+      g.beginPath(); g.arc(0,0,8,0,TAU); g.stroke();
+      g.beginPath(); g.moveTo(-6,-4); g.lineTo(-1,0); g.lineTo(-4,3); g.lineTo(2,6);
+      g.moveTo(-1,0); g.lineTo(5,-3); g.stroke(); break;
+    case 'camera':
+      g.strokeRect(-8,-5,11,10);
+      g.beginPath(); g.moveTo(3,-4); g.lineTo(8,-7); g.lineTo(8,7); g.lineTo(3,4); g.closePath(); g.stroke();
+      g.beginPath(); g.arc(-3,0,2.2,0,TAU); g.fill(); break;
+    case 'siren':
+      g.beginPath(); g.moveTo(-8,-3); g.lineTo(-3,-3); g.lineTo(2,-8); g.lineTo(2,8); g.lineTo(-3,3); g.lineTo(-8,3); g.closePath(); g.stroke();
+      for (let i=1;i<=2;i++){ g.beginPath(); g.arc(2,0,2+i*2.6,-0.8,0.8); g.stroke(); }
+      break;
+    case 'smoke':
+      g.beginPath(); g.arc(0,0,8,0,TAU); g.stroke();
+      g.beginPath(); g.arc(0,0,1.8,0,TAU); g.fill();
+      for (let i=0;i<6;i++){ const a=i*TAU/6; g.beginPath();
+        g.moveTo(Math.cos(a)*4.2,Math.sin(a)*4.2); g.lineTo(Math.cos(a)*6.2,Math.sin(a)*6.2); g.stroke(); }
+      break;
+  }
+}
+
+function drawActor(a){
+  // trail
+  if (a.trail.length > 1){
+    ctx.beginPath();
+    ctx.moveTo(a.trail[0].x, a.trail[0].y);
+    for (const p of a.trail) ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle = a.kind==='intruder' ? 'rgba(255,92,92,.35)'
+                    : a.kind==='pet' ? 'rgba(160,230,120,.3)' : 'rgba(125,211,252,.3)';
+    ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  const col = a.kind==='intruder' ? '#ff5c5c' : a.kind==='pet' ? '#a3e635' : '#7dd3fc';
+  const r = a.small ? 6 : 9;
+  ctx.save(); ctx.translate(a.x,a.y);
+  ctx.beginPath(); ctx.arc(0,0,r+6,0,TAU);
+  ctx.fillStyle = col+'22'; ctx.fill();
+  ctx.beginPath(); ctx.arc(0,0,r,0,TAU);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = '#0b0f1a'; ctx.lineWidth = 2; ctx.stroke();
+  // facing
+  ctx.beginPath(); ctx.moveTo(Math.cos(a.hdg)*r, Math.sin(a.hdg)*r);
+  ctx.lineTo(Math.cos(a.hdg)*(r+7), Math.sin(a.hdg)*(r+7));
+  ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#dfe6f5'; ctx.font = '600 10px ui-sans-serif,system-ui'; ctx.textAlign='center';
+  ctx.fillText(a.kind==='intruder'?'INTRUDER':a.kind==='pet'?'PET':'RESIDENT', 0, -r-8);
+  ctx.restore();
+}
+
+function drawFire(f){
+  const p = (Math.sin(S.clock*14)+1)/2;
+  const rad = 30 + f.smoke*160;
+  const g = ctx.createRadialGradient(f.x,f.y,4,f.x,f.y,rad);
+  g.addColorStop(0,'rgba(255,170,60,.5)');
+  g.addColorStop(.4,'rgba(130,120,110,.28)');
+  g.addColorStop(1,'rgba(90,90,95,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x,f.y,rad,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(f.x,f.y,9+p*4,0,TAU);
+  ctx.fillStyle = '#ff9c2e'; ctx.fill();
+  ctx.fillStyle = '#ffe9a8'; ctx.font='600 10px ui-sans-serif'; ctx.textAlign='center';
+  ctx.fillText('FIRE', f.x, f.y-18);
+}
+
+function drawHUD(){
+  ctx.textAlign = 'left';
+  if (S.showCoverage){
+    const g = coverage();
+    ctx.fillStyle = '#0c1018dd'; ctx.fillRect(12,H-88,214,74);
+    ctx.strokeStyle = '#2a3145'; ctx.strokeRect(12.5,H-87.5,213,73);
+    ctx.fillStyle='#e7ecf7'; ctx.font='700 12px ui-sans-serif';
+    ctx.fillText(`Floor coverage: ${g.pct}%`, 24, H-66);
+    const key = [['rgba(251,191,36,.6)','Motion only'],['rgba(192,132,252,.6)','Camera only'],['rgba(126,230,170,.7)','Both']];
+    ctx.font='11px ui-sans-serif';
+    key.forEach((k,i)=>{
+      ctx.fillStyle = k[0]; ctx.fillRect(24, H-54+i*14, 11, 11);
+      ctx.fillStyle = '#aab4ca'; ctx.fillText(k[1], 42, H-45+i*14);
+    });
+  }
+  if (S.sim.running){
+    ctx.fillStyle = '#0c1018dd'; ctx.fillRect(W-150,14,136,30);
+    ctx.strokeStyle = '#2a3145'; ctx.strokeRect(W-149.5,14.5,135,29);
+    ctx.fillStyle = '#9fb0d0'; ctx.font='600 11px ui-monospace,monospace';
+    ctx.fillText(`T+${S.sim.t.toFixed(1)}s  ${S.sim.paused?'PAUSED':S.sim.speed+'×'}`, W-138, 33);
+  }
+}
+
+function drawPreview(p){
+  ctx.save();
+  if (p.valid){
+    const c = CATALOG[p.type];
+    ctx.globalAlpha = .55;
+    const tmp = makeDevice(p.type, p.x, p.y, p.attach);
+    if (tmp.range){
+      if (tmp.fov && tmp.fov < 359) tmp.angle = defaultAim(p.x, p.y);
+      inBuilding(()=>drawCone(tmp,true));
+    }
+    drawDevice(tmp);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#cfe6ff'; ctx.font='600 11px ui-sans-serif'; ctx.textAlign='center';
+    ctx.fillText(p.label||'', p.x, p.y-24);
+  } else {
+    ctx.beginPath(); ctx.arc(p.x,p.y,14,0,TAU);
+    ctx.strokeStyle = '#ff5c5c'; ctx.lineWidth=2; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(p.x-7,p.y-7); ctx.lineTo(p.x+7,p.y+7);
+    ctx.moveTo(p.x+7,p.y-7); ctx.lineTo(p.x-7,p.y+7); ctx.stroke();
+    ctx.fillStyle = '#ff9b9b'; ctx.font='600 11px ui-sans-serif'; ctx.textAlign='center';
+    ctx.fillText(p.why||'', p.x, p.y-24);
+  }
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------
+   15. Drag & drop
+   ------------------------------------------------------------ */
+let DRAG = null;
+const ghost = document.getElementById('ghost');
+
+function canvasPos(ev){
+  const r = cv.getBoundingClientRect();
+  return { x: (ev.clientX - r.left) / r.width * W, y: (ev.clientY - r.top) / r.height * H };
+}
+function overCanvas(ev){
+  const r = cv.getBoundingClientRect();
+  return ev.clientX>=r.left && ev.clientX<=r.right && ev.clientY>=r.top && ev.clientY<=r.bottom;
+}
+
+function renderPalette(){
+  if (S.edit.on) return renderEditPanel();
+  const el = document.getElementById('pal');
+  el.innerHTML = ORDER.map(t=>{
+    const c = CATALOG[t];
+    const maxed = c.max && countOf(t) >= c.max;
+    const n = countOf(t);
+    return `<div class="pitem${maxed?' maxed':''}" data-type="${t}" title="${c.desc}">
+      <div class="ic">${svgIcon(t)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="nm">${c.name}</div>
+        <div class="pr">$${c.price}${n?` · ${n} placed`:''}</div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('palTitle').textContent = 'Devices';
+  document.getElementById('cost').textContent = '$'+totalCost();
+  el.querySelectorAll('.pitem').forEach(p=>{
+    p.addEventListener('pointerdown', ev=>{
+      ev.preventDefault();
+      const type = p.dataset.type;
+      DRAG = {kind:'new', type, preview:null};
+      ghost.style.display='block';
+      ghost.innerHTML = `<span style="color:${CATALOG[type].color}">●</span> ${CATALOG[type].name}`;
+      moveGhost(ev);
+      document.getElementById('hint').textContent = 'Drop it where you want it';
+    });
+  });
+}
+function svgIcon(t){
+  const c = CATALOG[t].color;
+  const P = {
+    panel:'<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h6"/>',
+    keypad:'<rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="9.5" cy="8" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="14.5" cy="8" r="1"/><circle cx="9.5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="14.5" cy="12" r="1"/><circle cx="9.5" cy="16" r="1"/><circle cx="12" cy="16" r="1"/><circle cx="14.5" cy="16" r="1"/>',
+    doorC:'<rect x="3" y="7" width="7" height="10" rx="1.5"/><rect x="14" y="7" width="7" height="10" rx="1.5"/>',
+    winC:'<rect x="3" y="7" width="7" height="10" rx="1.5"/><rect x="14" y="7" width="7" height="10" rx="1.5"/><path d="M10 12h4"/>',
+    motion:'<circle cx="5" cy="12" r="1.8"/><path d="M9 8a6 6 0 0 1 0 8M13 5.5a10 10 0 0 1 0 13M17 3a14 14 0 0 1 0 18"/>',
+    glass:'<circle cx="12" cy="12" r="8"/><path d="M6 8l5 4-3 3 4 3M11 12l6-3"/>',
+    camera:'<rect x="2" y="7" width="12" height="10" rx="2"/><path d="M14 10l7-3v10l-7-3z"/><circle cx="7" cy="12" r="2"/>',
+    siren:'<path d="M3 9h4l5-5v16l-5-5H3z"/><path d="M16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14"/>',
+    smoke:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.8"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"/>',
+  }[t];
+  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.6"
+    stroke-linecap="round" stroke-linejoin="round" style="overflow:visible">${P}</svg>`;
+}
+function moveGhost(ev){ ghost.style.left = ev.clientX+'px'; ghost.style.top = (ev.clientY-26)+'px'; }
+
+addEventListener('pointermove', ev=>{
+  if (S.edit.on){ if (overCanvas(ev)) editPointerMove(canvasPos(ev)); else S.edit.hover = null; return; }
+  if (!DRAG) return;
+  if (DRAG.kind === 'new'){
+    if (overCanvas(ev)){
+      ghost.style.display='none';
+      const p = canvasPos(ev);
+      const v = validatePlacement(DRAG.type, p.x, p.y);
+      DRAG.preview = v.ok ? {type:DRAG.type, x:v.x, y:v.y, attach:v.attach, label:v.label, valid:true}
+                          : {type:DRAG.type, x:p.x, y:p.y, valid:false, why:v.why};
+    } else { ghost.style.display='block'; moveGhost(ev); DRAG.preview=null; }
+  }
+  else if (DRAG.kind === 'move'){
+    const p = canvasPos(ev);
+    DRAG.moved = DRAG.moved || dist(p.x,p.y,DRAG.sx,DRAG.sy) > 4;
+    const d = DRAG.dev;
+    if (DRAG.moved){
+      if (!overCanvas(ev)){
+        DRAG.preview = {type:d.type, x:DRAG.lastX, y:DRAG.lastY, valid:false, why:'Release to delete'};
+      } else {
+        const v = validatePlacement(d.type, p.x, p.y, d.id);
+        DRAG.lastX = p.x; DRAG.lastY = p.y;
+        if (v.ok){ d.x = v.x; d.y = v.y; d.attachedTo = v.attach || null; S.coverGrid=null; DRAG.preview=null; }
+        else DRAG.preview = {type:d.type, x:p.x, y:p.y, valid:false, why:v.why};
+      }
+    }
+  }
+  else if (DRAG.kind === 'rotate'){
+    const p = canvasPos(ev);
+    const d = DRAG.dev;
+    d.angle = Math.atan2(p.y-d.y, p.x-d.x)*180/Math.PI;
+    S.coverGrid = null; renderInspector();
+  }
+});
+
+addEventListener('pointerup', ev=>{
+  if (S.edit.on){ editPointerUp(); return; }
+  if (!DRAG) return;
+  const d = DRAG;
+  ghost.style.display='none';
+  if (d.kind === 'new'){
+    if (overCanvas(ev)){
+      const p = canvasPos(ev);
+      placeDevice(d.type, p.x, p.y);
+    }
+  } else if (d.kind === 'move'){
+    if (d.moved && !overCanvas(ev)) removeDevice(d.dev.id);
+    else if (!d.moved){ S.sel = d.dev.id; renderInspector(); renderZones(); }
+    else { changed(); }
+  } else if (d.kind === 'rotate'){ changed(); }
+  DRAG = null;
+  document.getElementById('hint').textContent = defaultHint();
+});
+
+cv.addEventListener('pointerdown', ev=>{
+  Audio_.init();
+  const p = canvasPos(ev);
+  if (S.edit.on){ ev.preventDefault(); editPointerDown(p); return; }
+  // rotation handle of the selected device?
+  const sel = S.devices.find(x=>x.id===S.sel);
+  if (sel && sel.range && sel.fov < 359){
+    const a = sel.angle*Math.PI/180;
+    if (dist(p.x,p.y, sel.x+Math.cos(a)*34, sel.y+Math.sin(a)*34) < 12){
+      DRAG = {kind:'rotate', dev:sel}; return;
+    }
+  }
+  // hit a device?
+  let hit = null, hd = 20;
+  for (const d of S.devices){ const dd = dist(p.x,p.y,d.x,d.y); if (dd<hd){ hd=dd; hit=d; } }
+  if (hit){
+    S.sel = hit.id; renderInspector(); renderZones();
+    DRAG = {kind:'move', dev:hit, sx:p.x, sy:p.y, lastX:hit.x, lastY:hit.y, moved:false};
+  } else {
+    S.sel = null; renderInspector(); renderZones();
+  }
+});
+
+/* ------------------------------------------------------------
+   16. Panels
+   ------------------------------------------------------------ */
+function renderStatus(){
+  const e = document.getElementById('status');
+  let cls='disarmed', txt='DISARMED';
+  if (S.alarm){ cls='alarm'; txt='⚠ ALARM — '+Math.floor(S.alarmT)+'s'; }
+  else if (S.mode==='EXIT'){ cls='exit'; txt='EXIT DELAY '+Math.ceil(S.countdown)+'s'; }
+  else if (S.mode==='ENTRY'){ cls='entry'; txt='ENTRY DELAY '+Math.ceil(S.countdown)+'s'; }
+  else if (S.mode==='ARMED'){ cls='armed'; txt='ARMED '+S.armMode.toUpperCase(); }
+  e.className = cls; e.textContent = txt;
+}
+
+function renderInspector(){
+  if (S.edit.on) return renderEditInspector();
+  const host = document.getElementById('insp');
+  const d = S.devices.find(x=>x.id===S.sel);
+  if (!d){ host.innerHTML = '<div class="empty">No device selected. Click one on the plan.</div>'; return; }
+  const c = CATALOG[d.type];
+  const where = d.attachedTo ? byId(d.attachedTo).name : (roomAt(d.x,d.y)||{name:'Outdoors'}).name;
+  let h = `<div class="devhead">
+      <div class="ic">${svgIcon(d.type)}</div>
+      <div><b>${c.name}</b><br><small>${where} · $${c.price}</small></div>
+    </div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:8px">${c.desc}</div>`;
+
+  if (d.zone){
+    h += `<div class="row"><span class="k">Zone type</span>
+      <select data-f="zone">${Object.entries(ZONE_LABEL).map(([k,v])=>
+        `<option value="${k}"${d.zone===k?' selected':''}>${v}</option>`).join('')}</select></div>`;
+  }
+  if (d.range){
+    h += `<div class="row"><span class="k">Range</span><input type="range" data-f="range" min="60" max="400" step="10" value="${d.range}"><b>${d.range}</b></div>`;
+  }
+  if (d.fov && d.fov < 359){
+    h += `<div class="row"><span class="k">Field of view</span><input type="range" data-f="fov" min="20" max="180" step="5" value="${d.fov}"><b>${d.fov}°</b></div>
+          <div class="row"><span class="k">Aim</span><input type="range" data-f="angle" min="-180" max="180" step="1" value="${Math.round(d.angle)}"><b>${Math.round(d.angle)}°</b></div>`;
+  }
+  if (d.type==='keypad'){
+    h += `<div class="row"><span class="k">Exit delay</span>
+        <input type="range" id="kExit" min="0" max="120" step="10" value="${S.exitDelay}"><b id="kExitV">${S.exitDelay}s</b></div>
+      <div style="color:var(--dim);font-size:10.5px;margin:-4px 0 8px">
+        Programmed at the keypad — applies to the whole system.
+        ${S.exitDelay ? 'How long you get to leave after arming.' : 'Zero: arming takes effect immediately.'}</div>`;
+  }
+  if (d.type==='motion')
+    h += `<div class="row"><span class="k">Pet immunity</span><input type="checkbox" data-f="petImmune"${d.petImmune?' checked':''}></div>`;
+  if (d.type==='camera')
+    h += `<div class="row"><span class="k">AI person detection</span><input type="checkbox" data-f="aiDetect"${d.aiDetect?' checked':''}></div>`;
+  if (d.type==='doorC'||d.type==='winC')
+    h += `<div class="row"><span class="k">Chime when disarmed</span><input type="checkbox" data-f="chime"${d.chime?' checked':''}></div>`;
+  if (d.zone)
+    h += `<div class="row"><span class="k">Bypass this zone</span><input type="checkbox" data-f="bypassed"${d.bypassed?' checked':''}></div>`;
+
+  h += `<div class="row" style="margin-top:12px">
+      <button class="btn danger" data-act="del" style="flex:1">Remove device</button></div>`;
+  host.innerHTML = h;
+
+  host.querySelectorAll('[data-f]').forEach(inp=>{
+    const f = inp.dataset.f;
+    const ev = inp.type==='checkbox' || inp.tagName==='SELECT' ? 'change' : 'input';
+    inp.addEventListener(ev, ()=>{
+      d[f] = inp.type==='checkbox' ? inp.checked
+            : inp.type==='range' ? Number(inp.value) : inp.value;
+      S.coverGrid = null;
+      if (inp.type==='range' && inp.nextElementSibling)
+        inp.nextElementSibling.textContent = f==='fov' ? d[f]+'°' : f==='angle' ? Math.round(d[f])+'°' : d[f];
+      renderZones(); save();
+    });
+  });
+  const kx = host.querySelector('#kExit');
+  if (kx){
+    kx.addEventListener('input', ()=>setExitDelay(+kx.value));
+    kx.addEventListener('change', ()=>addLog(
+      S.exitDelay ? `Exit delay set to ${S.exitDelay}s at the keypad`
+                  : 'Exit delay switched off at the keypad — arming is instant', 'info'));
+  }
+  host.querySelector('[data-act=del]').addEventListener('click', ()=>removeDevice(d.id));
+}
+
+/** Exit delay is a system setting, programmable from the sidebar or any keypad. */
+function setExitDelay(v){
+  S.exitDelay = clamp(Math.round(v), 0, 120);
+  const pairs = [['sExit','vExit'], ['kExit','kExitV']];
+  for (const [slider, label] of pairs){
+    const s = document.getElementById(slider), l = document.getElementById(label);
+    if (s) s.value = S.exitDelay;
+    if (l) l.textContent = S.exitDelay + 's';
+  }
+  save();
+}
+
+function renderZones(){
+  const host = document.getElementById('zones');
+  const list = S.devices.filter(d=>d.zone);
+  document.getElementById('zcount').textContent = list.length;
+  if (!list.length){ host.innerHTML = '<div class="empty">No sensors installed.</div>'; return; }
+  host.innerHTML = list.map((d,i)=>{
+    const led = d.tripped ? 'trip' : d.bypassed ? 'byp' : '';
+    const act = zoneActive(d);
+    return `<div class="zone${d.id===S.sel?' sel':''}" data-id="${d.id}">
+      <span class="led ${led}" style="${act?'':'opacity:.3'}"></span>
+      <span class="zn">${String(i+1).padStart(2,'0')} ${devName(d)}</span>
+      <span class="zt">${d.zone}</span></div>`;
+  }).join('');
+  host.querySelectorAll('.zone').forEach(z=>z.addEventListener('click',()=>{
+    S.sel = z.dataset.id; renderInspector(); renderZones();
+  }));
+}
+setInterval(()=>{ if (S.devices.some(d=>d.zone)) renderZones(); }, 400);
+
+function renderLog(){
+  const el = document.getElementById('log');
+  el.innerHTML = log.slice(-120).map(l=>
+    `<div><span class="t">${mmss(l.t)}</span><span class="${l.kind}">${l.text}</span></div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ------------------------------------------------------------
+   17. Modal
+   ------------------------------------------------------------ */
+function openModal(html){
+  document.getElementById('modalCard').innerHTML = html;
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+window.closeModal = closeModal;
+document.getElementById('modal').addEventListener('click', e=>{
+  if (e.target.id==='modal') closeModal();
+});
+
+/* ------------------------------------------------------------
+   18. Presets & persistence
+   ------------------------------------------------------------ */
+const PRESETS = {
+  budget: {
+    name:'Budget — perimeter only',
+    devs:[
+      ['panel', 500,425],['keypad', 95,418],
+      ['doorC', 40,425],['doorC', 580,40],['doorC', 830,380],
+      ['motion', 480,420],['siren', 500,392],
+    ]},
+  recommended: {
+    name:'Recommended',
+    devs:[
+      ['panel', 500,425],['keypad', 100,418],
+      ['doorC', 40,425],['doorC', 580,40],['doorC', 960,210],['doorC', 830,380],
+      ['winC', 40,200],['winC', 150,40],['winC', 960,570],['winC', 420,660],
+      ['glass', 220,120],['glass', 500,560],
+      ['motion', 440,360],['motion', 90,400],['motion', 680,60],
+      ['motion', 300,640],['motion', 600,640],['motion', 940,640],
+      ['camera', 70,70],['camera', 920,640],
+      ['siren', 500,392],['siren', 60,350],
+      ['smoke', 580,300],['smoke', 500,440],
+    ]},
+  full: {
+    name:'Everything covered',
+    devs:[
+      ['panel', 500,425],['keypad', 100,418],['keypad', 820,420],
+      ...DOORS.filter(d=>!d.arch).map(d=>['doorC', d.x, d.y]),
+      ...WINDOWS.map(w=>['winC', w.x, w.y]),
+      ['glass', 200,130],['glass', 600,120],['glass', 180,560],['glass', 500,560],['glass', 870,560],
+      ['motion', 420,350],['motion', 300,430],['motion', 700,430],['motion', 880,520],['motion', 650,120],['motion', 280,620],
+      ['camera', 70,70],['camera', 930,70],['camera', 70,640],['camera', 930,640],
+      ['siren', 500,392],['siren', 60,350],['siren', 940,350],
+      ['smoke', 580,300],['smoke', 500,440],['smoke', 200,560],['smoke', 250,200],
+    ]},
+};
+function loadPreset(key){
+  const p = PRESETS[key]; if (!p) return;
+  S.devices = []; S.sel = null;
+  for (const [t,x,y] of p.devs){
+    const v = validatePlacement(t,x,y);
+    if (!v.ok) continue;
+    const d = makeDevice(t, v.x, v.y, v.attach);
+    if (d.fov && d.fov < 359) d.angle = defaultAim(v.x, v.y);
+    if (t==='doorC' && (v.attach==='d_front'||v.attach==='d_gar')) d.zone='ENTRY';
+    if (t==='camera') d.aiDetect = key==='full';
+    S.devices.push(d);
+  }
+  S.sel = null;
+  addLog(`Loaded preset: ${p.name} (${S.devices.length} devices, $${totalCost()})`,'ok');
+  changed();
+}
+/** Fit a sensible system to whatever plan is loaded — works on a plan you drew. */
+function autoDesign(level){
+  if (!ROOMS.length){ flash('Draw some rooms first'); return; }
+  S.devices = []; S.sel = null;
+
+  const extDoors = DOORS.filter(d => d.ext && !d.arch);
+  const hub = extDoors.length ? roomById(extDoors[0].b) : ROOMS[0];
+  const place = (type, x, y) => {
+    const v = validatePlacement(type, x, y);
+    if (!v.ok) return null;
+    const d = makeDevice(type, v.x, v.y, v.attach);
+    if (d.fov && d.fov < 359) d.angle = defaultAim(v.x, v.y);
+    if (type==='doorC' && v.attach === (extDoors[0] && extDoors[0].id)) d.zone = 'ENTRY';
+    if (type==='camera') d.aiDetect = level === 'max';
+    S.devices.push(d);
+    return d;
+  };
+  /** a spot inside a room, biased to a corner so the sensor looks across it */
+  const corner = (r, i=0) => {
+    const pts = [[r.x+20, r.y+20],[r.x+r.w-20, r.y+20],[r.x+20, r.y+r.h-20],[r.x+r.w-20, r.y+r.h-20]];
+    return pts[i % 4];
+  };
+
+  if (hub){ place('panel', roomCx(hub), roomCy(hub)); place('keypad', roomCx(hub)+26, roomCy(hub)); }
+  for (const d of extDoors) place('doorC', d.x, d.y);
+  if (level !== 'basic'){
+    for (const d of DOORS.filter(d=>!d.ext && !d.arch)) if (level==='max') place('doorC', d.x, d.y);
+    for (const w of WINDOWS) place('winC', w.x, w.y);
+  }
+  const motionRooms = level === 'basic' ? ROOMS.slice(0,1)
+                    : level === 'good'  ? ROOMS.filter((_,i)=>i % 2 === 0)
+                    : ROOMS;
+  motionRooms.forEach((r,i)=>{ const [x,y] = corner(r,i); place('motion', x, y); });
+  if (level !== 'basic'){
+    const big = [...ROOMS].sort((a,b)=>b.w*b.h - a.w*a.h);
+    big.slice(0, level==='max' ? big.length : Math.ceil(big.length/3))
+       .forEach(r => place('glass', roomCx(r), roomCy(r)));
+    big.slice(0, level==='max' ? 4 : 2).forEach((r,i)=>{ const [x,y] = corner(r,i+1); place('camera', x, y); });
+    big.slice(0, level==='max' ? 4 : 2).forEach(r => place('smoke', roomCx(r), roomCy(r)-14));
+  }
+  const sirenRooms = level === 'basic' ? [hub || ROOMS[0]] : [hub || ROOMS[0], ROOMS[ROOMS.length-1]];
+  sirenRooms.filter(Boolean).forEach(r => place('siren', roomCx(r), roomCy(r)+18));
+
+  addLog(`Auto-fitted a system to this plan — ${S.devices.length} devices, $${totalCost()}`,'ok');
+  changed();
+}
+
+const KEY = 'wally.layout.v1';
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify({
+      devices: S.devices.map(d=>({...d, tripped:0, latched:0, hold:0, seeing:0, route:undefined})),
+      entryDelay:S.entryDelay, exitDelay:S.exitDelay,
+      // only a plan you drew is worth storing; the default one lives in the file
+      plan: isCustomPlan() ? {
+        name:PLAN.name, custom:true, scenarios:null,
+        rooms:   PLAN.rooms.map(r=>({id:r.id,name:r.name,x:r.x,y:r.y,w:r.w,h:r.h})),
+        doors:   PLAN.doors.map(o=>({id:o.id,name:o.name,x:o.x,y:o.y,o:o.o,w:o.w,arch:!!o.arch})),
+        windows: PLAN.windows.map(o=>({id:o.id,name:o.name,x:o.x,y:o.y,o:o.o,w:o.w})),
+      } : null,
+    }));
+  }catch(e){}
+}
+function load(){
+  let o;
+  try{
+    const raw = localStorage.getItem(KEY); if (!raw) return false;
+    o = JSON.parse(raw);
+  }catch(e){ return false; }
+  // the plan has to come back first — devices hang off its rooms and openings
+  try{
+    if (o.plan && o.plan.rooms && o.plan.rooms.length){
+      loadPlan({...o.plan, custom:true, scenarios:null});
+      addLog(`Restored your own plan — ${ROOMS.length} rooms`,'ok');
+    }
+  }catch(e){ loadPlan(clonePlan(DEFAULT_PLAN)); addLog('Saved plan was unreadable — using the default house','warn'); }
+  if (!PLAN) loadPlan(clonePlan(DEFAULT_PLAN));
+
+  S.entryDelay = o.entryDelay ?? 30; S.exitDelay = o.exitDelay ?? 60;
+  if (!o.devices || !o.devices.length) return false;
+  try{
+    S.devices = o.devices.map(d=>Object.assign(makeDevice(d.type,d.x,d.y,d.attachedTo), d,
+      {tripped:false,latched:false,hold:0,cool:0,seeing:false}));
+  }catch(e){ S.devices = []; return false; }
+  pruneDevices();                       // drop anything whose mounting point is gone
+  return S.devices.length > 0;
+}
+
+/* ------------------------------------------------------------
+   19. UI wiring
+   ------------------------------------------------------------ */
+document.getElementById('bDisarm').onclick = ()=>{ Audio_.init(); disarm('keypad'); };
+document.getElementById('bHome').onclick  = ()=>{ Audio_.init(); arm('home'); };
+document.getElementById('bAway').onclick  = ()=>{ Audio_.init(); arm('away'); };
+document.getElementById('bRun').onclick   = runSim;
+document.getElementById('bPause').onclick = ()=>{
+  S.sim.paused = !S.sim.paused;
+  document.getElementById('bPause').textContent = S.sim.paused ? '▶' : '❚❚';
+};
+document.getElementById('speed').onchange = e => S.sim.speed = Number(e.target.value);
+document.getElementById('bCoverage').onclick = e=>{
+  S.showCoverage = !S.showCoverage; e.target.classList.toggle('on', S.showCoverage);
+};
+document.getElementById('bCones').onclick = e=>{
+  S.showCones = !S.showCones; e.target.classList.toggle('on', S.showCones);
+};
+document.getElementById('bMute').onclick = e=>{
+  S.muted = !S.muted; e.target.textContent = S.muted ? '🔇' : '🔊';
+  e.target.classList.toggle('on', !S.muted);
+  if (S.muted) Audio_.sirenOff(); else if (S.alarm) Audio_.sirenOn();
+};
+document.getElementById('bClear').onclick = ()=>{
+  if (!S.devices.length) return;
+  openModal(`<h2>Clear the whole system?</h2>
+    <div class="sub">${S.devices.length} devices will be removed.</div>
+    <div class="acts">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn danger" id="okClear">Remove everything</button></div>`);
+  document.getElementById('okClear').onclick = ()=>{
+    S.devices=[]; S.sel=null; disarm('system'); addLog('System cleared','warn'); changed(); closeModal();
+  };
+};
+document.getElementById('bPreset').onclick = ()=>{
+  const custom = isCustomPlan();
+  const opts = custom
+    ? [['auto-basic','Perimeter only','Contacts on every exterior door, one motion sensor, a siren'],
+       ['auto-good','Recommended','Contacts everywhere, motion in half the rooms, cameras, smoke'],
+       ['auto-max','Everything covered','Every opening and every room']]
+    : Object.entries(PRESETS).map(([k,p])=>[k, p.name, `${p.devs.length} devices`]);
+  openModal(`<h2>Load a preset layout</h2>
+    <div class="sub">${custom ? 'Fitted to the plan you drew.' : ''} This replaces whatever is on the plan now.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${opts.map(([k,n,s])=>`<button class="btn" data-p="${k}" style="text-align:left;padding:10px 12px">
+          <b>${n}</b><br><small style="color:var(--dim)">${s}</small></button>`).join('')}
+    </div>
+    <div class="acts"><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
+    b.dataset.p.startsWith('auto-') ? autoDesign(b.dataset.p.slice(5)) : loadPreset(b.dataset.p);
+    closeModal();
+  });
+};
+document.getElementById('bEdit').onclick = ()=>{ S.edit.on ? exitEdit() : enterEdit(); };
+document.getElementById('bHelp').onclick = showHelp;
+
+function showHelp(){
+  openModal(`<h2>SST — security system simulator</h2>
+  <div class="sub">Design an alarm system for the floor plan, arm it, then see whether it catches anyone.</div>
+  <div class="helpgrid">
+    <b>1. Build</b><div>Drag devices from the left panel onto the plan. Door and window contacts snap to the nearest door or window. Click a placed device to configure it; drag it off the plan to delete it.</div>
+    <b>2. Zones</b><div><b>Perimeter</b> alarms instantly. <b>Entry/Exit</b> starts the entry countdown so a resident can reach the keypad. <b>Interior follower</b> only alarms if no entry delay is running — and is ignored in Arm&nbsp;Home. <b>24-hour</b> is always live, even disarmed.</div>
+    <b>3. Arm</b><div><b>Arm Home</b> watches the perimeter only, so people can move inside. <b>Arm Away</b> watches everything.</div>
+    <b>4. Simulate</b><div>Pick a scenario and press Run. You get a scored report at the end.</div>
+    <b>5. Your own plan</b><div>Press <b>Blueprint</b> to draw the building instead of using the default house: drag out rooms, then click walls to add doors, archways and windows. Walls appear wherever rooms meet, and the scenario list is rebuilt from whatever you draw.</div>
+  </div>
+  <div style="margin-top:14px;color:var(--dim);font-size:12px">
+    <kbd>Del</kbd> remove selected &nbsp; <kbd>[</kbd> <kbd>]</kbd> rotate &nbsp; <kbd>C</kbd> coverage &nbsp;
+    <kbd>Space</kbd> pause &nbsp; <kbd>Esc</kbd> deselect<br>
+    In Blueprint mode: <kbd>S</kbd> select &nbsp; <kbd>R</kbd> room &nbsp; <kbd>D</kbd> door &nbsp;
+    <kbd>A</kbd> arch &nbsp; <kbd>W</kbd> window &nbsp; <kbd>E</kbd> erase
+  </div>
+  <div class="acts"><button class="btn pri" onclick="closeModal()">Start designing</button></div>`);
+}
+
+const sEntry = document.getElementById('sEntry'), sExit = document.getElementById('sExit');
+sEntry.value = S.entryDelay; sExit.value = S.exitDelay;
+sEntry.oninput = ()=>{ S.entryDelay = +sEntry.value; document.getElementById('vEntry').textContent = S.entryDelay+'s'; save(); };
+sExit.oninput  = ()=>setExitDelay(+sExit.value);
+
+addEventListener('keydown', e=>{
+  if (/input|select|textarea/i.test(e.target.tagName)) return;
+  if (S.edit.on){
+    const sel = S.edit.sel;
+    if ((e.key==='Delete'||e.key==='Backspace') && sel){
+      e.preventDefault();
+      sel.kind==='room' ? deleteRoom(sel.id) : deleteOpening(sel.id);
+    } else if (e.key==='Escape'){ S.edit.sel=null; renderEditPanel(); closeModal(); }
+    else {
+      const k = {s:'select', r:'room', d:'door', a:'arch', w:'window', e:'erase'}[e.key.toLowerCase()];
+      if (k){ S.edit.tool = k; S.edit.sel = null; renderEditPanel(); }
+    }
+    return;
+  }
+  const d = S.devices.find(x=>x.id===S.sel);
+  if (e.key==='Delete'||e.key==='Backspace'){ if (d){ e.preventDefault(); removeDevice(d.id); } }
+  else if (e.key==='['){ if (d){ d.angle=(d.angle-7+540)%360-180; S.coverGrid=null; renderInspector(); } }
+  else if (e.key===']'){ if (d){ d.angle=(d.angle+7+540)%360-180; S.coverGrid=null; renderInspector(); } }
+  else if (e.key==='Escape'){ S.sel=null; renderInspector(); renderZones(); closeModal(); }
+  else if (e.key.toLowerCase()==='c'){ document.getElementById('bCoverage').click(); }
+  else if (e.key===' '){ e.preventDefault(); if (S.sim.running) document.getElementById('bPause').click(); }
+});
+
+/* ------------------------------------------------------------
+   20. Blueprint editor — draw your own plan
+   ------------------------------------------------------------ */
+const GRID = 10;
+const snap = v => Math.round(v/GRID)*GRID;
+const MIN_ROOM = 60;
+const EDIT_TOOLS = [
+  {id:'select', name:'Select / move', hint:'Click a room to rename it. Drag to move, drag a corner to resize.'},
+  {id:'room',   name:'Room',          hint:'Drag out a rectangle. Rooms may touch but not overlap.'},
+  {id:'door',   name:'Door',          hint:'Click a wall. Interior or exterior.'},
+  {id:'arch',   name:'Archway',       hint:'Click a wall. An opening with no door — never alarms.'},
+  {id:'window', name:'Window',        hint:'Click an exterior wall.'},
+  {id:'erase',  name:'Erase',         hint:'Click a room or an opening to delete it.'},
+];
+const OPENING_W = {door:80, arch:120, window:80};
+
+/* ---- geometry helpers for the editor ---- */
+const rectsOverlap = (a,b) =>
+  a.x < b.x+b.w-0.01 && b.x < a.x+a.w-0.01 && a.y < b.y+b.h-0.01 && b.y < a.y+a.h-0.01;
+
+function roomRectValid(rect, ignoreId){
+  if (rect.w < MIN_ROOM || rect.h < MIN_ROOM) return `Too small (min ${MIN_ROOM}×${MIN_ROOM})`;
+  if (rect.x < 10 || rect.y < 10 || rect.x+rect.w > W-10 || rect.y+rect.h > H-10) return 'Off the plot';
+  for (const r of ROOMS){
+    if (r.id === ignoreId) continue;
+    if (rectsOverlap(rect, r)) return `Overlaps the ${r.name}`;
+  }
+  return null;
+}
+
+/** Nearest wall position to a point, for dropping an opening. */
+function wallSpotAt(x, y, width, tol = 26){
+  let best = null, bd = tol;
+  for (const wl of WALLS){
+    const along = clamp(wl.h ? x : y, wl.a + width/2, wl.b - width/2);
+    if (wl.b - wl.a < width + 8) continue;
+    const px = wl.h ? along : wl.f, py = wl.h ? wl.f : along;
+    const d = dist(x, y, px, py);
+    if (d < bd){ bd = d; best = {wall:wl, x:px, y:py, o: wl.h ? 'h' : 'v'}; }
+  }
+  if (!best) return null;
+  // must not land on top of another opening
+  const a0 = (best.o==='h' ? best.x : best.y) - width/2;
+  const b0 = a0 + width;
+  for (const o of OPENINGS){
+    if ((o.o==='h') !== (best.o==='h')) continue;
+    if (Math.abs((o.o==='h' ? o.y : o.x) - best.wall.f) > 2) continue;
+    const c = o.o==='h' ? o.x : o.y;
+    if (a0 < c + o.w/2 - 1 && c - o.w/2 + 1 < b0) return {...best, blocked:`${o.name} is in the way`};
+  }
+  return best;
+}
+
+/* ---- naming ---- */
+function uniqueName(base){
+  const taken = new Set([...ROOMS.map(r=>r.name), ...OPENINGS.map(o=>o.name)]);
+  if (!taken.has(base)) return base;
+  for (let i=2;;i++) if (!taken.has(`${base} ${i}`)) return `${base} ${i}`;
+}
+function nameForOpening(kind, x, y, o){
+  const s1 = o==='h' ? roomAtRaw(x, y-5) : roomAtRaw(x-5, y);
+  const s2 = o==='h' ? roomAtRaw(x, y+5) : roomAtRaw(x+5, y);
+  const ext = !(s1 && s2);
+  const inside = s1 || s2;
+  const who = inside ? inside.name : 'Room';
+  if (kind === 'window') return uniqueName(`${who} Window`);
+  if (kind === 'arch')   return uniqueName(`${who} Archway`);
+  if (ext) return DOORS.some(d=>d.ext && !d.arch) ? uniqueName(`${who} Ext. Door`) : 'Front Door';
+  // interior: name after the smaller of the two rooms, which is the one it serves
+  const served = (s1.w*s1.h <= s2.w*s2.h) ? s1 : s2;
+  return uniqueName(`${served.name} Door`);
+}
+
+/* ---- mutations ---- */
+/** The first edit to the shipped house makes it *your* plan: it now gets saved,
+ *  and its hand-written scenario list is replaced by one generated from the
+ *  rooms and doors that actually exist. */
+function markPlanEdited(){
+  if (PLAN.custom) return;
+  PLAN.custom = true;
+  PLAN.name = 'My plan';
+  PLAN.scenarios = null;
+  addLog('Plan edited — scenarios will be rebuilt from your layout','info');
+}
+
+function planChanged(msg){
+  markPlanEdited();
+  const dropped = rebuildPlan();
+  for (const o of dropped) addLog(`${o.name} removed — no longer on a wall`, 'warn');
+  pruneDevices();
+  refreshScenarioList();
+  if (msg) addLog(msg, 'ok');
+  renderPalette(); renderInspector(); renderZones(); save();
+}
+
+/** Devices whose door, window or room has gone cannot stay. */
+function pruneDevices(){
+  const gone = [];
+  S.devices = S.devices.filter(d => {
+    if (d.attachedTo){
+      const o = byId(d.attachedTo);
+      if (!o){ gone.push(d); return false; }
+      d.x = o.x; d.y = o.y;                       // follow the opening
+      return true;
+    }
+    if (CATALOG[d.type].place === 'room' && !roomAt(d.x, d.y)){ gone.push(d); return false; }
+    return true;
+  });
+  if (gone.length){
+    addLog(`${gone.length} device${gone.length>1?'s':''} removed — ${gone.length>1?'their':'its'} mounting point is gone`, 'warn');
+    if (gone.some(d=>d.id===S.sel)) S.sel = null;
+  }
+  S.coverGrid = null;
+}
+
+function addRoom(rect){
+  const why = roomRectValid(rect);
+  if (why){ flash(why); return null; }
+  const r = {id: uid('room'), name: uniqueName('Room'), ...rect};
+  PLAN.rooms.push(r);
+  S.edit.sel = {kind:'room', id:r.id};
+  planChanged(`Added ${r.name}`);
+  return r;
+}
+function addOpening(kind, spot){
+  const width = OPENING_W[kind];
+  const isWin = kind === 'window';
+  const s1 = spot.o==='h' ? roomAtRaw(spot.x, spot.y-5) : roomAtRaw(spot.x-5, spot.y);
+  const s2 = spot.o==='h' ? roomAtRaw(spot.x, spot.y+5) : roomAtRaw(spot.x+5, spot.y);
+  if (isWin && s1 && s2){ flash('Windows go on exterior walls'); return null; }
+  if (!s1 && !s2){ flash('That is not a wall'); return null; }
+  const o = {id: uid(isWin?'win':'dr'), name: nameForOpening(kind, spot.x, spot.y, spot.o),
+             x: spot.x, y: spot.y, o: spot.o, w: width};
+  if (kind === 'arch') o.arch = true;
+  (isWin ? PLAN.windows : PLAN.doors).push(o);
+  S.edit.sel = {kind:'opening', id:o.id};
+  planChanged(`Added ${o.name}`);
+  return o;
+}
+function deleteRoom(id){
+  const r = roomById(id); if (!r) return;
+  PLAN.rooms = PLAN.rooms.filter(x=>x.id!==id);
+  if (S.edit.sel && S.edit.sel.id === id) S.edit.sel = null;
+  planChanged(`Deleted ${r.name}`);
+}
+function deleteOpening(id){
+  const o = byId(id); if (!o) return;
+  PLAN.doors   = PLAN.doors.filter(x=>x.id!==id);
+  PLAN.windows = PLAN.windows.filter(x=>x.id!==id);
+  if (S.edit.sel && S.edit.sel.id === id) S.edit.sel = null;
+  planChanged(`Deleted ${o.name}`);
+}
+
+/** Moving a room takes its openings with it; resizing drops the ones that no longer fit. */
+function applyRoomGeometry(room, rect, isMove){
+  const why = roomRectValid(rect, room.id);
+  if (why) return why;
+  const dx = rect.x - room.x, dy = rect.y - room.y;
+  const onEdge = isMove ? OPENINGS.filter(o => openingTouchesRoom(o, room)) : [];
+  Object.assign(room, rect);
+  for (const o of onEdge){ o.x += dx; o.y += dy; }
+  return null;
+}
+function openingTouchesRoom(o, r){
+  const near = (v, t) => Math.abs(v - t) < 2;
+  if (o.o === 'h') return (near(o.y, r.y) || near(o.y, r.y+r.h)) && o.x > r.x && o.x < r.x+r.w;
+  return (near(o.x, r.x) || near(o.x, r.x+r.w)) && o.y > r.y && o.y < r.y+r.h;
+}
+
+/* ---- hit testing ---- */
+function editHit(x, y){
+  for (const o of OPENINGS){
+    const half = o.w/2;
+    const inSpan = o.o==='h' ? (Math.abs(x-o.x) < half && Math.abs(y-o.y) < 14)
+                             : (Math.abs(y-o.y) < half && Math.abs(x-o.x) < 14);
+    if (inSpan) return {kind:'opening', id:o.id};
+  }
+  const r = roomAt(x,y);
+  return r ? {kind:'room', id:r.id} : null;
+}
+function cornerAt(room, x, y){
+  const c = [['nw',room.x,room.y],['ne',room.x+room.w,room.y],
+             ['sw',room.x,room.y+room.h],['se',room.x+room.w,room.y+room.h]];
+  for (const [k,cx,cy] of c) if (dist(x,y,cx,cy) < 14) return k;
+  return null;
+}
+function resizeRect(room, corner, x, y){
+  const x1 = corner.includes('w') ? snap(x) : room.x;
+  const y1 = corner.includes('n') ? snap(y) : room.y;
+  const x2 = corner.includes('e') ? snap(x) : room.x + room.w;
+  const y2 = corner.includes('s') ? snap(y) : room.y + room.h;
+  return {x: Math.min(x1,x2), y: Math.min(y1,y2),
+          w: Math.abs(x2-x1), h: Math.abs(y2-y1)};
+}
+
+/* ---- pointer handling (called from the canvas handlers) ---- */
+function editPointerDown(p){
+  const E = S.edit;
+  if (E.tool === 'room'){ E.drag = {kind:'draw', x0:snap(p.x), y0:snap(p.y), x1:snap(p.x), y1:snap(p.y)}; return; }
+  if (E.tool === 'door' || E.tool === 'arch' || E.tool === 'window'){
+    const spot = wallSpotAt(p.x, p.y, OPENING_W[E.tool]);
+    if (!spot){ flash('Click on a wall'); return; }
+    if (spot.blocked){ flash(spot.blocked); return; }
+    addOpening(E.tool, spot); return;
+  }
+  if (E.tool === 'erase'){
+    const hit = editHit(p.x, p.y);
+    if (!hit){ flash('Nothing there'); return; }
+    hit.kind === 'room' ? deleteRoom(hit.id) : deleteOpening(hit.id);
+    return;
+  }
+  // select / move / resize.
+  // A corner handle sits exactly on the room boundary, which counts as outside
+  // the room for hit-testing — so check for one first. Only the selected room
+  // has handles drawn, and rooms can share a corner, so only its own count.
+  const picked = E.sel && E.sel.kind==='room' ? roomById(E.sel.id) : null;
+  if (picked){
+    const corner = cornerAt(picked, p.x, p.y);
+    if (corner){
+      E.drag = {kind:'resize', id:picked.id, corner, orig:{...picked}};
+      return;
+    }
+  }
+  const hit = editHit(p.x, p.y);
+  E.sel = hit;
+  renderEditPanel();
+  if (hit && hit.kind === 'room'){
+    const room = roomById(hit.id);
+    E.drag = {kind:'move', id:room.id, orig:{...room}, ox:p.x, oy:p.y};
+  } else if (hit && hit.kind === 'opening'){
+    E.drag = {kind:'slide', id:hit.id, orig:{...byId(hit.id)}};
+  }
+}
+function editPointerMove(p){
+  const E = S.edit;
+  E.hover = (E.tool==='door'||E.tool==='arch'||E.tool==='window')
+    ? wallSpotAt(p.x, p.y, OPENING_W[E.tool]) : null;
+  const g = E.drag;
+  if (!g) return;
+  if (g.kind === 'draw'){ g.x1 = snap(p.x); g.y1 = snap(p.y); return; }
+  if (g.kind === 'move'){
+    const room = roomById(g.id); if (!room) return;
+    const rect = {x: snap(g.orig.x + p.x - g.ox), y: snap(g.orig.y + p.y - g.oy), w: g.orig.w, h: g.orig.h};
+    g.why = applyRoomGeometry(room, rect, true);
+    if (!g.why) g.live = true;
+    return;
+  }
+  if (g.kind === 'resize'){
+    const room = roomById(g.id); if (!room) return;
+    g.why = applyRoomGeometry(room, resizeRect(g.orig, g.corner, p.x, p.y), false);
+    if (!g.why) g.live = true;
+    return;
+  }
+  if (g.kind === 'slide'){
+    const o = byId(g.id); if (!o) return;
+    const spot = wallSpotAt(o.o==='h' ? p.x : o.x, o.o==='h' ? o.y : p.y, o.w, 999);
+    if (spot && spot.wall.h === (o.o==='h') && Math.abs(spot.wall.f - (o.o==='h'?o.y:o.x)) < 2 && !spot.blocked){
+      o.x = spot.x; o.y = spot.y; g.live = true;
+    }
+  }
+}
+function editPointerUp(){
+  const E = S.edit, g = E.drag;
+  E.drag = null;
+  if (!g) return;
+  if (g.kind === 'draw'){
+    const rect = {x:Math.min(g.x0,g.x1), y:Math.min(g.y0,g.y1),
+                  w:Math.abs(g.x1-g.x0), h:Math.abs(g.y1-g.y0)};
+    if (rect.w >= GRID && rect.h >= GRID) addRoom(rect);
+    return;
+  }
+  if (g.why){                                   // last move was invalid — roll back
+    const room = roomById(g.id);
+    if (room) Object.assign(room, g.orig);
+    flash(g.why);
+  }
+  if (g.live || g.why) planChanged(null);
+}
+
+/* ---- plan-level actions ---- */
+function enterEdit(){
+  if (S.sim.running) runSim();                  // stop anything in flight
+  disarm('system');
+  // always open on Select / move — a destructive tool should never be armed for you
+  S.edit.on = true; S.edit.tool = 'select'; S.edit.sel = null; S.edit.drag = null; S.sel = null;
+  document.getElementById('bEdit').classList.add('on');
+  document.getElementById('bEdit').textContent = '✓ Done';
+  document.body.classList.add('editing');
+  addLog('Blueprint mode — drawing the plan','info');
+  renderPalette(); renderEditPanel(); renderInspector();
+}
+function exitEdit(){
+  S.edit.on = false; S.edit.drag = null; S.edit.sel = null;
+  document.getElementById('bEdit').classList.remove('on');
+  document.getElementById('bEdit').textContent = 'Blueprint';
+  document.body.classList.remove('editing');
+  if (!ROOMS.length) addLog('The plan is empty — draw at least one room','warn');
+  else if (!DOORS.some(d=>d.ext && !d.arch)) addLog('No exterior door — intruder scenarios have nowhere to come in','warn');
+  refreshScenarioList();
+  renderPalette(); renderInspector(); renderZones();
+  addLog(`Plan: ${ROOMS.length} rooms, ${DOORS.length} doors, ${WINDOWS.length} windows`,'info');
+}
+function newPlan(){
+  PLAN = {name:'My plan', custom:true, rooms:[], doors:[], windows:[], scenarios:null};
+  S.devices = []; S.sel = null; S.edit.sel = null;
+  rebuildPlan(); refreshScenarioList();
+  addLog('Blank plan — draw your first room','info');
+  planChanged(null);
+}
+function useDefaultPlan(devices='keep'){
+  loadPlan(clonePlan(DEFAULT_PLAN));
+  if (devices === 'clear'){ S.devices = []; S.sel = null; }
+  else pruneDevices();
+  refreshScenarioList();
+  addLog('Loaded the default house plan','ok');
+  renderEditPanel(); renderPalette(); renderZones(); renderInspector(); save();
+}
+function refreshScenarioList(){
+  const el = document.getElementById('scenario');
+  const keep = el.value;
+  el.innerHTML = SCENARIOS.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  if (SCENARIOS.some(s=>s.id===keep)) el.value = keep;
+  el.disabled = !SCENARIOS.length;
+  document.getElementById('bRun').disabled = !SCENARIOS.length;
+}
+
+/* ---- panels ---- */
+function renderEditPanel(){
+  if (!S.edit.on) return;
+  const host = document.getElementById('pal');
+  const tool = EDIT_TOOLS.find(t=>t.id===S.edit.tool);
+  host.innerHTML = EDIT_TOOLS.map(t=>
+    `<div class="pitem${t.id===S.edit.tool?' act':''}" data-tool="${t.id}">
+       <div class="ic">${TOOL_ICON[t.id]}</div>
+       <div style="flex:1;min-width:0"><div class="nm">${t.name}</div></div>
+     </div>`).join('')
+    + `<div style="color:var(--dim);font-size:11px;margin-top:8px">${tool.hint}</div>
+       <div class="row" style="margin-top:12px;gap:6px">
+         <button class="btn" id="bNewPlan" style="flex:1">Blank plan</button>
+         <button class="btn" id="bDefPlan" style="flex:1">Default house</button>
+       </div>`;
+  host.querySelectorAll('[data-tool]').forEach(el=>el.addEventListener('pointerdown', ev=>{
+    ev.preventDefault(); ev.stopPropagation();
+    S.edit.tool = el.dataset.tool; S.edit.sel = null; renderEditPanel();
+  }));
+  document.getElementById('bNewPlan').onclick = ()=>{
+    confirmModal('Start from a blank plan?', 'Every room and every device will be removed.', 'Clear it', newPlan);
+  };
+  document.getElementById('bDefPlan').onclick = ()=>{
+    confirmModal('Load the default house?', 'Your current plan and devices will be replaced.',
+      'Load it', ()=>useDefaultPlan('clear'));
+  };
+  document.getElementById('palTitle').textContent = 'Blueprint';
+  document.getElementById('cost').textContent = `${ROOMS.length} room${ROOMS.length===1?'':'s'}`;
+  document.getElementById('hint').textContent = tool.hint;
+  renderEditInspector();
+}
+
+function renderEditInspector(){
+  const host = document.getElementById('insp');
+  const sel = S.edit.sel;
+  if (!sel){
+    host.innerHTML = `<div class="empty">Nothing selected.</div>
+      <div style="color:var(--dim);font-size:11px;margin-top:6px">
+        Rooms are rectangles on a ${GRID}px grid. Put them edge to edge and the shared
+        edge becomes an interior wall; anything with open air on one side is exterior.
+      </div>`;
+    return;
+  }
+  if (sel.kind === 'room'){
+    const r = roomById(sel.id);
+    if (!r){ S.edit.sel = null; return renderEditInspector(); }
+    host.innerHTML = `
+      <div class="devhead"><div class="ic">${TOOL_ICON.room}</div>
+        <div><b>Room</b><br><small>${r.w} × ${r.h}</small></div></div>
+      <div class="row"><span class="k">Name</span>
+        <input type="text" id="rName" value="${r.name.replace(/"/g,'&quot;')}" style="width:150px;
+          background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 7px"></div>
+      <div class="row"><span class="k">Doors / windows</span><b>${OPENINGS.filter(o=>openingTouchesRoom(o,r)).length}</b></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn danger" id="rDel" style="flex:1">Delete room</button></div>`;
+    const inp = document.getElementById('rName');
+    inp.addEventListener('input', ()=>{ r.name = inp.value || 'Room'; save(); });
+    inp.addEventListener('change', ()=>{ refreshScenarioList(); renderZones(); });
+    document.getElementById('rDel').onclick = ()=>deleteRoom(r.id);
+    return;
+  }
+  const o = byId(sel.id);
+  if (!o){ S.edit.sel = null; return renderEditInspector(); }
+  const kind = o.kind === 'window' ? 'window' : o.arch ? 'arch' : 'door';
+  host.innerHTML = `
+    <div class="devhead"><div class="ic">${TOOL_ICON[kind]}</div>
+      <div><b>${o.name}</b><br><small>${o.ext ? 'Exterior' : 'Interior'} · ${o.w}px wide</small></div></div>
+    <div class="row"><span class="k">Width</span>
+      <input type="range" id="oW" min="40" max="200" step="10" value="${o.w}"><b id="oWv">${o.w}</b></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn danger" id="oDel" style="flex:1">Delete</button></div>`;
+  const ow = document.getElementById('oW');
+  ow.addEventListener('input', ()=>{
+    const prev = o.w;
+    o.w = +ow.value;
+    if (!wallUnder(o)){ o.w = prev; ow.value = prev; flash('Will not fit on this wall'); return; }
+    document.getElementById('oWv').textContent = o.w;
+    markPlanEdited();
+    SOLIDS = deriveSolids(); S.coverGrid = null; save();
+  });
+  document.getElementById('oDel').onclick = ()=>deleteOpening(o.id);
+}
+
+const TOOL_ICON = (()=>{
+  const s = p => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9fb0d0"
+    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  return {
+    select:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9fb0d0" stroke-width="1.6" stroke-linejoin="round"><path d="M5 3l14 8-6 1.6L10.5 19z"/></svg>',
+    room:  s('<rect x="3" y="5" width="18" height="14"/>'),
+    door:  s('<path d="M15 3v18H6V6z"/><circle cx="9" cy="12" r=".9" fill="#9fb0d0"/><path d="M15 21h4"/>'),
+    arch:  s('<path d="M4 20V10a8 8 0 0 1 16 0v10"/>'),
+    window:s('<rect x="3" y="5" width="18" height="14"/><path d="M12 5v14M3 12h18"/>'),
+    erase: s('<path d="M4 16l8-8 6 6-6 6H8z"/><path d="M3 21h18"/>'),
+  };
+})();
+
+function confirmModal(title, sub, okLabel, fn){
+  openModal(`<h2>${title}</h2><div class="sub">${sub}</div>
+    <div class="acts"><button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn danger" id="cfmOk">${okLabel}</button></div>`);
+  document.getElementById('cfmOk').onclick = ()=>{ fn(); closeModal(); };
+}
+
+/* ---- editor rendering ---- */
+function drawEditOverlay(){
+  const E = S.edit;
+  // room handles + names
+  for (const r of ROOMS){
+    const sel = E.sel && E.sel.kind==='room' && E.sel.id===r.id;
+    ctx.strokeStyle = sel ? '#7dd3fc' : 'rgba(125,211,252,.28)';
+    ctx.lineWidth = sel ? 2 : 1;
+    ctx.setLineDash(sel ? [] : [4,4]);
+    ctx.strokeRect(r.x+1.5, r.y+1.5, r.w-3, r.h-3);
+    ctx.setLineDash([]);
+    if (sel){
+      ctx.fillStyle = '#7dd3fc';
+      for (const [cx,cy] of [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]]){
+        ctx.beginPath(); ctx.arc(cx,cy,5,0,TAU); ctx.fill();
+      }
+      ctx.font = '600 11px ui-monospace,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`${r.w} × ${r.h}`, roomCx(r), roomCy(r)+4);
+    }
+  }
+  // selected opening
+  if (E.sel && E.sel.kind==='opening'){
+    const o = byId(E.sel.id);
+    if (o){
+      ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (o.o==='h'){ ctx.moveTo(o.x-o.w/2, o.y); ctx.lineTo(o.x+o.w/2, o.y); }
+      else { ctx.moveTo(o.x, o.y-o.w/2); ctx.lineTo(o.x, o.y+o.w/2); }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(o.x, o.y, 7, 0, TAU);
+      ctx.fillStyle = '#0e1220'; ctx.fill(); ctx.stroke();
+    }
+  }
+  // tool preview
+  const g = E.drag;
+  if (g && g.kind === 'draw'){
+    const x = Math.min(g.x0,g.x1), y = Math.min(g.y0,g.y1);
+    const w = Math.abs(g.x1-g.x0), h = Math.abs(g.y1-g.y0);
+    const why = roomRectValid({x,y,w,h});
+    ctx.fillStyle = why ? 'rgba(255,92,92,.14)' : 'rgba(125,211,252,.16)';
+    ctx.strokeStyle = why ? '#ff5c5c' : '#7dd3fc';
+    ctx.lineWidth = 2;
+    ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
+    ctx.fillStyle = why ? '#ff9b9b' : '#cfe6ff';
+    ctx.font = '600 12px ui-sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(why || `${w} × ${h}`, x+w/2, y+h/2+4);
+  }
+  if (E.hover && !g){
+    const o = E.hover.o, half = OPENING_W[E.tool]/2;
+    ctx.strokeStyle = E.hover.blocked ? '#ff5c5c' : '#49d6a0';
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (o==='h'){ ctx.moveTo(E.hover.x-half, E.hover.y); ctx.lineTo(E.hover.x+half, E.hover.y); }
+    else { ctx.moveTo(E.hover.x, E.hover.y-half); ctx.lineTo(E.hover.x, E.hover.y+half); }
+    ctx.stroke(); ctx.lineCap = 'butt';
+    if (E.hover.blocked){
+      ctx.fillStyle = '#ff9b9b'; ctx.font='600 11px ui-sans-serif'; ctx.textAlign='center';
+      ctx.fillText(E.hover.blocked, E.hover.x, E.hover.y-14);
+    }
+  }
+  // empty-plan prompt
+  if (!ROOMS.length){
+    ctx.fillStyle = '#5d6680'; ctx.font = '600 15px ui-sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Pick the Room tool and drag out your first room', W/2, H/2);
+  }
+}
+
+/* ------------------------------------------------------------
+   21. Boot
+   ------------------------------------------------------------ */
+const restored = load();                     // restores the plan too, if you drew one
+if (!PLAN) loadPlan(clonePlan(DEFAULT_PLAN));
+restoreProperty();
+refreshScenarioList();
+if (!restored){
+  if (!isCustomPlan()) loadPreset('budget');
+  addLog('Welcome — drag devices onto the plan to build a system','info');
+  showHelp();
+} else addLog(`Layout restored — ${S.devices.length} devices, $${totalCost()}`,'ok');
+sEntry.value=S.entryDelay;
+document.getElementById('vEntry').textContent = S.entryDelay+'s';
+setExitDelay(S.exitDelay);
+document.getElementById('bMute').classList.add('on');
+renderPalette(); renderInspector(); renderZones(); renderStatus(); renderLog();
+document.getElementById('hint').textContent = defaultHint();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
