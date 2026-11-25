@@ -76,6 +76,11 @@ aside.right{border-left:1px solid var(--line)}
   margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
   display:flex;justify-content:space-between;align-items:center;font-weight:700;
 }
+.sec.contact{
+  margin-top:auto;border-top:1px solid var(--line);border-bottom:0;
+  font-size:11px;color:var(--dim);line-height:1.5;
+}
+.sec.contact b{display:block;color:var(--txt);font-size:11.5px;margin-bottom:2px}
 
 /* ---------- palette ---------- */
 .pal{display:flex;flex-direction:column;gap:5px}
@@ -168,6 +173,18 @@ kbd{background:#222a3e;border:1px solid #39425f;border-bottom-width:2px;border-r
 ::-webkit-scrollbar-track{background:transparent}
 @media(max-width:1180px){main{grid-template-columns:186px 1fr 250px}}
 @media(max-width:1680px){.brand small{display:none}}
+#mobileNote{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:150;
+  display:none;flex-direction:column;align-items:center;text-align:center;gap:14px;
+  width:min(90vw,420px);padding:28px 24px;border-radius:18px;
+  background:#14304a;border:1px solid #2b6f93;color:var(--txt);
+  box-shadow:0 0 0 100vmax #05070caa,0 20px 60px #000d;
+  font-size:17px;line-height:1.45;
+}
+#mobileNote.show{display:flex}
+#mobileNote .mi{font-size:64px;line-height:1}
+#mobileNote b{color:var(--sky);font-size:22px}
+#mobileNote .btn{padding:10px 26px;font-size:15px;margin-top:4px}
 </style>
 </head>
 <body>
@@ -221,6 +238,11 @@ kbd{background:#222a3e;border:1px solid #39425f;border-bottom-width:2px;border-r
       Contacts snap to doors &amp; windows.<br>
       Drag a placed device off the plan to delete it.
     </div>
+    <div class="sec contact">
+      <b>Bugs / feedback / requests?</b>
+      Message me here:<br>
+      pedrockstp@gmail.com
+    </div>
   </aside>
 
   <section class="stage">
@@ -245,7 +267,11 @@ kbd{background:#222a3e;border:1px solid #39425f;border-bottom-width:2px;border-r
 </main>
 
 <div id="ghost"></div>
-
+<div id="mobileNote" role="status">
+  <span class="mi">💻</span>
+  <div><b>Better on a computer</b><br>You'll have a better experience on a computer. This simulator is built for a bigger screen and a mouse.</div>
+  <button class="btn pri" id="mobileOk">Got it</button>
+</div>
 <div class="modal" id="modal"><div class="card" id="modalCard"></div></div>
 
 <script>
@@ -2748,6 +2774,21 @@ document.getElementById('bMute').classList.add('on');
 renderPalette(); renderInspector(); renderZones(); renderStatus(); renderLog();
 document.getElementById('hint').textContent = defaultHint();
 requestAnimationFrame(loop);
+(function(){
+  const isPhone = () => {
+    const uaMobile = /Android.+Mobile|iPhone|iPod|Windows Phone|Mobile Safari/i.test(navigator.userAgent);
+    const touchNarrow = matchMedia('(pointer:coarse)').matches && Math.min(screen.width, innerWidth) <= 820;
+    return uaMobile || touchNarrow;
+  };
+  let dismissed = false;
+  try { dismissed = sessionStorage.getItem('sst.mobileNote') === '1'; } catch(e){}
+  const note = document.getElementById('mobileNote');
+  if (!dismissed && isPhone()) note.classList.add('show');
+  document.getElementById('mobileOk').onclick = () => {
+    note.classList.remove('show');
+    try { sessionStorage.setItem('sst.mobileNote', '1'); } catch(e){}
+  };
+})();
 </script>
 </body>
 </html>
