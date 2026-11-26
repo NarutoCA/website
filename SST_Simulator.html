@@ -133,7 +133,13 @@ body.editing .sec.settings,body.editing .sec.devhint{display:none}
 .devhead div small{color:var(--dim)}
 
 /* ---------- zones ---------- */
-.zone{display:flex;align-items:center;gap:8px;padding:4px 5px;border-radius:6px;font-size:11.5px;cursor:pointer}
+#zones{
+  max-height:calc(12 * 26px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:2px;
+}
+.zone{display:flex;align-items:center;gap:8px;padding:0 5px;border-radius:6px;font-size:11.5px;cursor:pointer;height:26px;flex:0 0 26px}
 .zone:hover{background:#1e2435}
 .zone.sel{background:#1d2a3b;outline:1px solid #335}
 .led{width:9px;height:9px;border-radius:50%;background:#2a7a5c;flex:0 0 9px;box-shadow:0 0 6px #2a7a5c88}
